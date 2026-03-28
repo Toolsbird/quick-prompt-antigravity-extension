@@ -194,7 +194,7 @@ export const WEBVIEW_STYLES = `
   /* Sync / Login pill — matches master-toggle aesthetic */
   .btn-sync {
     background: var(--surface2);
-    color: #ffffff;
+    color: #0f172a;
     border: 1px solid var(--border);
     border-radius: 99px;
     padding: 6px 14px;
@@ -771,8 +771,8 @@ export const WEBVIEW_JS = `
       if (hText) hText.textContent = 'Sync Now';
       if (hIcon) hIcon.textContent = '🔄';
     } else {
-      // Header button — white pill (login state)
-      if (hBtn) { hBtn.classList.remove('synced'); hBtn.style.color = '#ffffff'; }
+      // Header button — dark text pill (login state, light background)
+      if (hBtn) { hBtn.classList.remove('synced'); hBtn.style.color = '#0f172a'; }
       if (hText) hText.textContent = 'Login to Sync';
       if (hIcon) hIcon.textContent = '🔐';
     }
