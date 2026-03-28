@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { StorageService } from './storage';
 import { QuickPromptTreeProvider, PromptTreeItem, CategoryTreeItem } from './treeProvider';
-import { injectPromptToChat } from './webview';
+import { injectPrompt } from './actions';
 
 export function registerCommands(
   context: vscode.ExtensionContext,
@@ -14,7 +14,7 @@ export function registerCommands(
     vscode.commands.registerCommand('quickPrompt.usePrompt', async (item?: PromptTreeItem) => {
       if (item?.prompt) {
         await storage.incrementUseCount(item.prompt.id);
-        await injectPromptToChat(item.prompt.content);
+        await injectPrompt(item.prompt, storage);
       }
     })
   );
@@ -25,7 +25,7 @@ export function registerCommands(
       const prompt = storage.getPrompts().find((p) => p.id === id);
       if (prompt) {
         await storage.incrementUseCount(id);
-        await injectPromptToChat(prompt.content);
+        await injectPrompt(prompt, storage);
       }
     })
   );
@@ -227,7 +227,7 @@ export function registerCommands(
         const prompt = prompts.find((p) => p.id === picked.id);
         if (prompt) {
           await storage.incrementUseCount(prompt.id);
-          await injectPromptToChat(prompt.content);
+          await injectPrompt(prompt, storage);
         }
       }
     })

@@ -10,6 +10,16 @@ export interface Prompt {
   updatedAt: number;
   tags?: string[];
   useCount?: number;
+  skillId?: string; // Optional: Link to a standalone skill
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+  content: string; // Detailed instructions/markdown
+  createdAt: number;
+  updatedAt: number;
+  isFavorite: boolean;
 }
 
 export interface Category {
@@ -23,4 +33,5 @@ export interface PromptStore {
   categories: Category[];
   isPro?: boolean;
   licenseKey?: string;
+  skills: Skill[]; // New Standalone Skills array
 }

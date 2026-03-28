@@ -35,13 +35,13 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerCommands = registerCommands;
 const vscode = __importStar(require("vscode"));
-const webview_1 = require("./webview");
+const actions_1 = require("./actions");
 function registerCommands(context, storage, treeProvider) {
     // ---- Use Prompt (inject to chat) ----
     context.subscriptions.push(vscode.commands.registerCommand('quickPrompt.usePrompt', async (item) => {
         if (item?.prompt) {
             await storage.incrementUseCount(item.prompt.id);
-            await (0, webview_1.injectPromptToChat)(item.prompt.content);
+            await (0, actions_1.injectPrompt)(item.prompt, storage);
         }
     }));
     // ---- Inject by ID (used by status bar) ----
@@ -49,7 +49,7 @@ function registerCommands(context, storage, treeProvider) {
         const prompt = storage.getPrompts().find((p) => p.id === id);
         if (prompt) {
             await storage.incrementUseCount(id);
-            await (0, webview_1.injectPromptToChat)(prompt.content);
+            await (0, actions_1.injectPrompt)(prompt, storage);
         }
     }));
     // ---- Add Prompt ----
@@ -224,7 +224,7 @@ function registerCommands(context, storage, treeProvider) {
             const prompt = prompts.find((p) => p.id === picked.id);
             if (prompt) {
                 await storage.incrementUseCount(prompt.id);
-                await (0, webview_1.injectPromptToChat)(prompt.content);
+                await (0, actions_1.injectPrompt)(prompt, storage);
             }
         }
     }));

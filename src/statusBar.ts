@@ -8,19 +8,27 @@ export class StatusBarManager {
   private _storage: StorageService;
   private _disposables: vscode.Disposable[] = [];
 
-  constructor(storage: StorageService) {
-    this._storage = storage;
-    // Re-render whenever data changes
-    this._disposables.push(storage.onDidChange(() => this._sync()));
-    this._sync();
-  }
-
-  private _sync(): void {
-    // Dispose old items
-    this._items.forEach((i) => i.dispose());
-    this._items = [];
-
-    const favorites = this._storage.getFavoritePrompts();
+    constructor(storage: StorageService) {
+      this._storage = storage;
+      // Re-render whenever data changes
+      this._disposables.push(storage.onDidChange(() => this._sync()));
+      // Re-render if configuration (enable/disable) changes
+      this._disposables.push(vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration('quickPrompt.enabled')) this._sync();
+      }));
+      this._sync();
+    }
+  
+    private _sync(): void {
+      // Dispose old items
+      this._items.forEach((i) => i.dispose());
+      this._items = [];
+  
+      // Check if extension is enabled
+      const isEnabled = vscode.workspace.getConfiguration('quickPrompt').get<boolean>('enabled', true);
+      if (!isEnabled) return;
+  
+      const favorites = this._storage.getFavoritePrompts();
 
     if (favorites.length === 0) {
       // Show a placeholder when there are no favorites

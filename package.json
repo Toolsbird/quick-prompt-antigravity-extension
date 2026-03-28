@@ -3,7 +3,11 @@
   "displayName": "Quick Prompt — Antigravity",
   "description": "Save, organize, and instantly inject AI prompts into Antigravity/VS Code chat. Access favorites from the status bar in one click.",
   "version": "1.0.0",
-  "publisher": "antigravity",
+  "publisher": "Toolsbird",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Toolsbird/quick-prompt-antigravity-extension"
+  },
   "icon": "resources/icon.png",
   "engines": {
     "vscode": "^1.100.0"
@@ -173,7 +177,17 @@
         "key": "ctrl+shift+p ctrl+shift+q",
         "mac": "cmd+shift+q"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Quick Prompt",
+      "properties": {
+        "quickPrompt.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable the Quick Prompt extension features (Status Bar, Sidebar, etc.)"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

@@ -59,6 +59,11 @@ export class QuickPromptTreeProvider
 
   constructor(private readonly storage: StorageService) {
     storage.onDidChange(() => this.refresh());
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration('quickPrompt.enabled')) {
+        this.refresh();
+      }
+    });
   }
 
   refresh(): void {
@@ -69,7 +74,14 @@ export class QuickPromptTreeProvider
     return element;
   }
 
-  getChildren(element?: QuickPromptTreeItem): QuickPromptTreeItem[] {
+  getChildren(element?: QuickPromptTreeItem): QuickPromptTreeItem[] | any[] {
+    const isEnabled = vscode.workspace.getConfiguration('quickPrompt').get<boolean>('enabled', true);
+    if (!isEnabled) {
+      if (!element) {
+        return [new vscode.TreeItem("⚡ Quick Prompt (Disabled)")];
+      }
+      return [];
+    }
     if (!element) {
       // ROOT — show categories
       const categories = this.storage.getCategories();
@@ -89,17 +101,15 @@ export class QuickPromptTreeProvider
         );
       }
 
-      // Real categories that have at least one prompt
-      const usedCategoryNames = new Set(prompts.map((p) => p.category));
+      // All categories
       categories
-        .filter((c) => usedCategoryNames.has(c.name))
         .forEach((cat) => {
           const count = prompts.filter((p) => p.category === cat.name).length;
           items.push(
             new CategoryTreeItem(
               cat,
               count,
-              vscode.TreeItemCollapsibleState.Collapsed
+              count === 0 ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed
             )
           );
         });

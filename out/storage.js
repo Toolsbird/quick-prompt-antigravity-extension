@@ -124,21 +124,33 @@ class StorageService {
         this.onDidChange = this._onChange.event;
         this._context = context;
         this._seedIfEmpty();
-        // Force PRO for internal developer/this device
-        const store = this._getStore();
-        if (!store.isPro) {
-            store.isPro = true;
-            store.licenseKey = 'DEV-INTERNAL-LICENSE';
-            this._saveStore(store);
+        // Check for a dev flag if available (mocking environment check)
+        if (process.env.DEBUG === 'true' || context.extensionMode === vscode.ExtensionMode.Development) {
+            const store = this._getStore();
+            if (!store.isPro) {
+                store.isPro = true;
+                store.licenseKey = 'DEV-INTERNAL-LICENSE';
+                this._saveStore(store);
+            }
         }
     }
     _seedIfEmpty() {
         const store = this._context.globalState.get(STORE_KEY);
-        if (!store || store.prompts.length === 0) {
+        if (!store || (store.prompts.length === 0 && (!store.skills || store.skills.length === 0))) {
             this._context.globalState.update(STORE_KEY, {
                 prompts: DEFAULT_PROMPTS,
                 categories: DEFAULT_CATEGORIES,
-                isPro: true, // INTERNAL DEV BUILD: Auto-activate PRO
+                skills: [
+                    {
+                        id: 'skill-dev-guidelines',
+                        name: '🛠️ Clean Code Guidelines',
+                        content: 'Always prefer functional patterns. Use TypeScript strictly. Follow SOLID principles. No legacy "var" usage. Documentation must follow JSDoc standards.',
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        isFavorite: true,
+                    }
+                ],
+                isPro: true, // Auto-pro for this device
                 licenseKey: 'DEV-INTERNAL-LICENSE',
             });
         }
@@ -147,6 +159,7 @@ class StorageService {
         return (this._context.globalState.get(STORE_KEY) || {
             prompts: [],
             categories: [],
+            skills: [], // Default empty skills
         });
     }
     async _saveStore(store) {
@@ -171,7 +184,7 @@ class StorageService {
         }
         const newPrompt = {
             ...prompt,
-            id: `prompt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `prompt-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
             createdAt: Date.now(),
             updatedAt: Date.now(),
             useCount: 0,
@@ -237,10 +250,13 @@ class StorageService {
     }
     async deleteCategory(name) {
         const store = this._getStore();
+        if (name === 'Uncategorized')
+            return;
         // Move prompts in this category to "Uncategorized"
         store.prompts = store.prompts.map((p) => p.category === name ? { ...p, category: 'Uncategorized' } : p);
+        // Remove the category
         store.categories = store.categories.filter((c) => c.name !== name);
-        // Ensure Uncategorized exists
+        // Ensure "Uncategorized" exists as a fallback
         if (!store.categories.find((c) => c.name === 'Uncategorized')) {
             store.categories.push({
                 id: 'cat-uncategorized',
@@ -272,6 +288,60 @@ class StorageService {
             store.licenseKey = key;
             await this._saveStore(store);
             return true;
+        }
+        return false;
+    }
+    // --- Skill CRUD ---
+    getSkills() {
+        return this._getStore().skills || [];
+    }
+    async addSkill(skill) {
+        const store = this._getStore();
+        const newSkill = {
+            ...skill,
+            id: `skill-${Date.now()}`,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+        };
+        if (!store.skills)
+            store.skills = [];
+        store.skills.push(newSkill);
+        await this._saveStore(store);
+        return newSkill;
+    }
+    async updateSkill(id, updates) {
+        const store = this._getStore();
+        if (!store.skills)
+            return;
+        const idx = store.skills.findIndex((s) => s.id === id);
+        if (idx !== -1) {
+            store.skills[idx] = {
+                ...store.skills[idx],
+                ...updates,
+                updatedAt: Date.now(),
+            };
+            await this._saveStore(store);
+        }
+    }
+    async deleteSkill(id) {
+        const store = this._getStore();
+        if (!store.skills)
+            return;
+        store.skills = store.skills.filter((s) => s.id !== id);
+        // Unlink from prompts
+        store.prompts = store.prompts.map((p) => p.skillId === id ? { ...p, skillId: undefined } : p);
+        await this._saveStore(store);
+    }
+    async toggleSkillFavorite(id) {
+        const store = this._getStore();
+        if (!store.skills)
+            return false;
+        const skill = store.skills.find((s) => s.id === id);
+        if (skill) {
+            skill.isFavorite = !skill.isFavorite;
+            skill.updatedAt = Date.now();
+            await this._saveStore(store);
+            return skill.isFavorite;
         }
         return false;
     }

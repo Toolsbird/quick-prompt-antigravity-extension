@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { Prompt, Category, PromptStore } from './models';
+import { Prompt, Category, PromptStore, Skill } from './models';
 
 const STORE_KEY = 'quickPrompt.store';
 
@@ -95,22 +95,34 @@ export class StorageService {
   constructor(context: vscode.ExtensionContext) {
     this._context = context;
     this._seedIfEmpty();
-    // Force PRO for internal developer/this device
-    const store = this._getStore();
-    if (!store.isPro) {
-      store.isPro = true;
-      store.licenseKey = 'DEV-INTERNAL-LICENSE';
-      this._saveStore(store);
+    // Check for a dev flag if available (mocking environment check)
+    if (process.env.DEBUG === 'true' || context.extensionMode === vscode.ExtensionMode.Development) {
+      const store = this._getStore();
+      if (!store.isPro) {
+        store.isPro = true;
+        store.licenseKey = 'DEV-INTERNAL-LICENSE';
+        this._saveStore(store);
+      }
     }
   }
 
   private _seedIfEmpty(): void {
     const store = this._context.globalState.get<PromptStore>(STORE_KEY);
-    if (!store || store.prompts.length === 0) {
+    if (!store || (store.prompts.length === 0 && (!store.skills || store.skills.length === 0))) {
       this._context.globalState.update(STORE_KEY, {
         prompts: DEFAULT_PROMPTS,
         categories: DEFAULT_CATEGORIES,
-        isPro: true, // INTERNAL DEV BUILD: Auto-activate PRO
+        skills: [
+          {
+            id: 'skill-dev-guidelines',
+            name: '🛠️ Clean Code Guidelines',
+            content: 'Always prefer functional patterns. Use TypeScript strictly. Follow SOLID principles. No legacy "var" usage. Documentation must follow JSDoc standards.',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            isFavorite: true,
+          }
+        ],
+        isPro: true, // Auto-pro for this device
         licenseKey: 'DEV-INTERNAL-LICENSE',
       });
     }
@@ -121,6 +133,7 @@ export class StorageService {
       this._context.globalState.get<PromptStore>(STORE_KEY) || {
         prompts: [],
         categories: [],
+        skills: [], // Default empty skills
       }
     );
   }
@@ -156,7 +169,7 @@ export class StorageService {
 
     const newPrompt: Prompt = {
       ...prompt,
-      id: `prompt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `prompt-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       useCount: 0,
@@ -232,12 +245,17 @@ export class StorageService {
 
   async deleteCategory(name: string): Promise<void> {
     const store = this._getStore();
+    if (name === 'Uncategorized') return;
+
     // Move prompts in this category to "Uncategorized"
     store.prompts = store.prompts.map((p) =>
       p.category === name ? { ...p, category: 'Uncategorized' } : p
     );
+    
+    // Remove the category
     store.categories = store.categories.filter((c) => c.name !== name);
-    // Ensure Uncategorized exists
+    
+    // Ensure "Uncategorized" exists as a fallback
     if (!store.categories.find((c) => c.name === 'Uncategorized')) {
       store.categories.push({
         id: 'cat-uncategorized',
@@ -275,6 +293,64 @@ export class StorageService {
       store.licenseKey = key;
       await this._saveStore(store);
       return true;
+    }
+    return false;
+  }
+
+  // --- Skill CRUD ---
+
+  getSkills(): Skill[] {
+    return this._getStore().skills || [];
+  }
+
+  async addSkill(skill: Omit<Skill, 'id' | 'createdAt' | 'updatedAt'>): Promise<Skill> {
+    const store = this._getStore();
+    const newSkill: Skill = {
+      ...skill,
+      id: `skill-${Date.now()}`,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    if (!store.skills) store.skills = [];
+    store.skills.push(newSkill);
+    await this._saveStore(store);
+    return newSkill;
+  }
+
+  async updateSkill(id: string, updates: Partial<Skill>): Promise<void> {
+    const store = this._getStore();
+    if (!store.skills) return;
+    const idx = store.skills.findIndex((s) => s.id === id);
+    if (idx !== -1) {
+      store.skills[idx] = {
+        ...store.skills[idx],
+        ...updates,
+        updatedAt: Date.now(),
+      };
+      await this._saveStore(store);
+    }
+  }
+
+  async deleteSkill(id: string): Promise<void> {
+    const store = this._getStore();
+    if (!store.skills) return;
+    store.skills = store.skills.filter((s) => s.id !== id);
+    // Unlink from prompts
+    store.prompts = store.prompts.map((p) =>
+      p.skillId === id ? { ...p, skillId: undefined } : p
+    );
+    await this._saveStore(store);
+  }
+
+  async toggleSkillFavorite(id: string): Promise<boolean> {
+    const store = this._getStore();
+    if (!store.skills) return false;
+    const skill = store.skills.find((s) => s.id === id);
+    if (skill) {
+      skill.isFavorite = !skill.isFavorite;
+      skill.updatedAt = Date.now();
+      await this._saveStore(store);
+      return skill.isFavorite;
     }
     return false;
   }
