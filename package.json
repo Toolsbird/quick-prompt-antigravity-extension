@@ -2,7 +2,7 @@
   "name": "quick-prompt-antigravity",
   "displayName": "Quick Prompt — Antigravity",
   "description": "Save, organize, and instantly inject AI prompts into Antigravity/VS Code chat. Access favorites from the status bar in one click.",
-  "version": "1.0.0",
+  "version": "1.2.1",
   "publisher": "Toolsbird",
   "repository": {
     "type": "git",

@@ -90,6 +90,7 @@ exports.WEBVIEW_STYLES = `
     width: 220px; flex-shrink: 0;
     background: var(--surface);
     border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
     overflow-y: auto;
     padding: 12px 8px;
   }
@@ -232,35 +233,6 @@ exports.WEBVIEW_STYLES = `
     0% { transform: scale(1); }
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
-  }
-
-  .limit-counter {
-    font-size: 11px;
-    color: var(--text3);
-    margin-top: 12px;
-    padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .limit-bar {
-    height: 4px;
-    flex: 1;
-    background: var(--surface2);
-    margin: 0 10px;
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .limit-fill {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 2px;
-    transition: width 0.3s;
-  }
-  .limit-fill.limit-full {
-    background: var(--red);
   }
 
   /* ===== CARDS ===== */
@@ -531,6 +503,9 @@ exports.WEBVIEW_STYLES = `
     border-radius: 4px; padding: 2px 6px; cursor: pointer;
   }
   .var-hint:hover { background: rgba(108,99,255,0.2); }
+
+  /* ===== USER PROFILE ACCENT ===== */
+  @keyframes spin { 100% { transform: rotate(360deg); } }
 `;
 /* =============================================================================
    CONSTANT: WEBVIEW_HTML
@@ -551,6 +526,10 @@ exports.WEBVIEW_HTML = `
         <span class="toggle-slider"></span>
         <span class="toggle-label" id="masterToggleLabel">Active</span>
       </label>
+      <!-- Login to Sync Button (always visible in header) -->
+      <button id="headerSyncBtn" class="btn btn-ghost btn-sm" style="border-color: var(--border); color: var(--text2); font-size: 11px;" onclick="triggerSync()" title="Login to sync your prompts to private cloud storage">
+        <span id="headerSyncIcon">🔐</span> <span id="headerSyncText">Login to Sync</span>
+      </button>
       <button id="upgradeBtn" class="btn btn-upgrade" onclick="openPremiumModal()" style="display:none;">🚀 Upgrade to Pro</button>
       <button class="btn btn-primary" style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 6px 20px rgba(16,185,129,0.3);" onclick="openAddSkillModal()">🧠 New Skill</button>
       <button class="btn btn-primary" onclick="openAddModal()">＋ New Prompt</button>
@@ -562,6 +541,16 @@ exports.WEBVIEW_HTML = `
     <div class="sidebar">
       <div class="search-bar">
         <input class="search-input" type="text" id="searchInput" placeholder="🔍 Search prompts…" oninput="filterPrompts(this.value)" />
+      </div>
+
+      <!-- CLOUD SYNC SECTION AT TOP -->
+      <div id="syncSection" style="padding: 10px; border-bottom: 1px solid var(--border); margin: 0 -8px 12px; border-radius: 8px;">
+        <button id="syncBtn" class="btn btn-ghost btn-sm" style="width: 100%; justify-content: center; gap: 8px; border-color: var(--border); color: var(--text2);" onclick="triggerSync()">
+          <span id="syncIcon">🔐</span> <span id="syncText">Login to Sync</span>
+        </button>
+        <div id="syncStatus" style="font-size: 9px; color: var(--text3); margin-top: 6px; line-height: 1.4; text-align: center;">
+          Sign in with GitHub — your data stays in your private GitHub storage.
+        </div>
       </div>
 
       <div class="nav-section-label">Views</div>
@@ -584,13 +573,6 @@ exports.WEBVIEW_HTML = `
       <div class="cat-add-row" style="margin-top:8px;">
         <input class="cat-add-input" id="newCatInput" type="text" placeholder="New category…" onkeydown="if(event.key==='Enter')addCategoryFromInput()" />
         <button class="cat-add-btn" onclick="addCategoryFromInput()">＋</button>
-      </div>
-
-      <!-- PREMIUM LIMITS -->
-      <div id="premiumLimitBox" class="limit-counter" style="display:none; margin-top:20px;">
-        <div>Free Prompts</div>
-        <div class="limit-bar"><div id="limitFill" class="limit-fill" style="width:0%"></div></div>
-        <div id="limitText">0/10</div>
       </div>
     </div>
 
@@ -730,6 +712,7 @@ exports.WEBVIEW_JS = `
   let allSkills = [];
   let isPro = false;
   let isExtensionEnabled = true;
+  let isLoggedIn = false;
   let currentNav = 'all';
   let editingId = null;
   let editingSkillId = null;
@@ -749,6 +732,7 @@ exports.WEBVIEW_JS = `
       allSkills = msg.skills || [];
       isPro = msg.isPro || false;
       isExtensionEnabled = msg.isEnabled !== false;
+      isLoggedIn = msg.isLoggedIn || false;
       updateToggleUI();
       render();
     } else if (msg.type === 'success') {
@@ -768,31 +752,61 @@ exports.WEBVIEW_JS = `
     populateCategorySelect();
     populateSkillSelect();
     updatePremiumUI();
+    updateSyncUI();
+  }
+  
+  function updateSyncUI() {
+    const btn = document.getElementById('syncBtn');
+    const text = document.getElementById('syncText');
+    const icon = document.getElementById('syncIcon');
+    const status = document.getElementById('syncStatus');
+    const hBtn = document.getElementById('headerSyncBtn');
+    const hText = document.getElementById('headerSyncText');
+    const hIcon = document.getElementById('headerSyncIcon');
+    
+    if (isLoggedIn) {
+      // Sidebar button — green/connected
+      if (btn) { btn.style.borderColor = 'var(--green)'; btn.style.color = 'var(--green)'; }
+      if (text) text.textContent = 'Sync Now';
+      if (icon) icon.textContent = '🔄';
+      if (status) status.textContent = '✅ Connected to private cloud storage';
+      // Header button — green
+      if (hBtn) { hBtn.style.borderColor = 'var(--green)'; hBtn.style.color = 'var(--green)'; }
+      if (hText) hText.textContent = 'Sync Now';
+      if (hIcon) hIcon.textContent = '🔄';
+    } else {
+      // Sidebar button — neutral
+      if (btn) { btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--text2)'; }
+      if (text) text.textContent = 'Login to Sync';
+      if (icon) icon.textContent = '🔐';
+      if (status) status.textContent = 'Data is stored in your private cloud storage.';
+      // Header button — neutral
+      if (hBtn) { hBtn.style.borderColor = 'var(--border)'; hBtn.style.color = 'var(--text2)'; }
+      if (hText) hText.textContent = 'Login to Sync';
+      if (hIcon) hIcon.textContent = '🔐';
+    }
+  }
+
+  function triggerSync() {
+    if (isLoggedIn) {
+      showToast('🔄 Syncing with GitHub...', 'info');
+      vscode.postMessage({ type: 'sync' });
+    } else {
+      showToast('🔑 Opening GitHub Login in your browser...', 'info');
+      vscode.postMessage({ type: 'login' });
+    }
   }
 
   function updatePremiumUI() {
     const badge = document.getElementById('proBadge');
     const upgradeBtn = document.getElementById('upgradeBtn');
-    const limitBox = document.getElementById('premiumLimitBox');
     
     if (isPro) {
       badge.style.display = 'inline-flex';
       upgradeBtn.style.display = 'none';
-      limitBox.style.display = 'none';
     } else {
       badge.style.display = 'none';
       upgradeBtn.style.display = 'inline-flex';
-      limitBox.style.display = 'block';
-      
-      const count = allPrompts.length;
-      const fill = document.getElementById('limitFill');
-      const text = document.getElementById('limitText');
-      const percent = Math.min((count / 10) * 100, 100);
-      
-      fill.style.width = percent + '%';
-      text.textContent = count + '/10';
-      if (count >= 10) fill.classList.add('limit-full');
-      else fill.classList.remove('limit-full');
     }
   }
 
@@ -1123,4 +1137,6 @@ exports.WEBVIEW_JS = `
     area.focus();
     area.selectionStart = area.selectionEnd = start + v.length;
   }
+
+  // NOTE: triggerSync() is defined above — this duplicate has been removed to fix the login loop.
 `;

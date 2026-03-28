@@ -122,6 +122,10 @@ class StorageService {
     constructor(context) {
         this._onChange = new vscode.EventEmitter();
         this.onDidChange = this._onChange.event;
+        // --- GitHub Gist Cloud Sync (VS Code native auth) ---
+        this._GIST_FILENAME = 'quick-prompt-backup.json';
+        this._GIST_DESCRIPTION = 'Quick Prompt — Antigravity Extension Backup';
+        this._GITHUB_SCOPES = ['gist'];
         this._context = context;
         this._seedIfEmpty();
         // Check for a dev flag if available (mocking environment check)
@@ -340,10 +344,137 @@ class StorageService {
         if (skill) {
             skill.isFavorite = !skill.isFavorite;
             skill.updatedAt = Date.now();
-            await this._saveStore(store);
             return skill.isFavorite;
         }
         return false;
+    }
+    /**
+     * Checks if the user is already signed into GitHub without prompting.
+     */
+    async checkLoggedIn() {
+        try {
+            const session = await vscode.authentication.getSession('github', this._GITHUB_SCOPES, { silent: true });
+            return !!session;
+        }
+        catch {
+            return false;
+        }
+    }
+    /**
+     * Triggers the native VS Code GitHub sign-in flow (opens the browser via VS Code's own OAuth).
+     */
+    async login() {
+        try {
+            const session = await vscode.authentication.getSession('github', this._GITHUB_SCOPES, { createIfNone: true });
+            return !!session;
+        }
+        catch (e) {
+            console.error('[Quick Prompt] GitHub login failed:', e);
+            return false;
+        }
+    }
+    /**
+     * Syncs prompts with a secret GitHub Gist (like WhatsApp Drive backup, but on GitHub).
+     * - If no gist exists: creates a new secret gist with current data.
+     * - If gist exists: merges remote + local and updates the gist.
+     */
+    async syncWithCloud() {
+        try {
+            // 1. Get GitHub session (silent — user must have logged in already)
+            const session = await vscode.authentication.getSession('github', this._GITHUB_SCOPES, { silent: true });
+            if (!session) {
+                return { success: false, message: 'Please login first using the "Login to Sync" button.' };
+            }
+            const token = session.accessToken;
+            const headers = {
+                'Authorization': `token ${token}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json',
+            };
+            // 2. Find existing backup gist
+            const listRes = await fetch('https://api.github.com/gists', { headers });
+            if (!listRes.ok) {
+                throw new Error(`GitHub API error: ${listRes.status} ${listRes.statusText}`);
+            }
+            const allGists = await listRes.json();
+            const existingGist = allGists.find((g) => g.files && g.files[this._GIST_FILENAME]);
+            const localStore = this._getStore();
+            if (existingGist) {
+                // 3. Download full gist content (list API truncates files)
+                const gistRes = await fetch(`https://api.github.com/gists/${existingGist.id}`, { headers });
+                if (!gistRes.ok)
+                    throw new Error(`Failed to fetch gist: ${gistRes.status}`);
+                const gistData = await gistRes.json();
+                const rawContent = gistData.files?.[this._GIST_FILENAME]?.content;
+                if (!rawContent)
+                    throw new Error('Backup file was empty or missing in the gist.');
+                const remoteStore = JSON.parse(rawContent);
+                // 4. Merge — prefer newest version of each item by updatedAt
+                const mergedPrompts = [...localStore.prompts];
+                (remoteStore.prompts || []).forEach(rp => {
+                    const localIdx = mergedPrompts.findIndex(lp => lp.id === rp.id);
+                    if (localIdx === -1) {
+                        mergedPrompts.push(rp); // New remote prompt
+                    }
+                    else if ((rp.updatedAt || 0) > (mergedPrompts[localIdx].updatedAt || 0)) {
+                        mergedPrompts[localIdx] = rp; // Remote is newer
+                    }
+                });
+                const mergedSkills = [...(localStore.skills || [])];
+                (remoteStore.skills || []).forEach(rs => {
+                    const localIdx = mergedSkills.findIndex(ls => ls.id === rs.id);
+                    if (localIdx === -1) {
+                        mergedSkills.push(rs);
+                    }
+                    else if ((rs.updatedAt || 0) > (mergedSkills[localIdx].updatedAt || 0)) {
+                        mergedSkills[localIdx] = rs;
+                    }
+                });
+                localStore.prompts = mergedPrompts;
+                localStore.skills = mergedSkills;
+                await this._saveStore(localStore);
+                // 5. Push merged data back to gist
+                const patchRes = await fetch(`https://api.github.com/gists/${existingGist.id}`, {
+                    method: 'PATCH',
+                    headers,
+                    body: JSON.stringify({
+                        files: {
+                            [this._GIST_FILENAME]: {
+                                content: JSON.stringify(localStore, null, 2)
+                            }
+                        }
+                    })
+                });
+                if (!patchRes.ok)
+                    throw new Error(`Failed to update gist: ${patchRes.status}`);
+                return { success: true, message: `✅ Sync complete! ${mergedPrompts.length} prompts synced.` };
+            }
+            else {
+                // 6. No gist yet — create a new secret gist
+                const createRes = await fetch('https://api.github.com/gists', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        description: this._GIST_DESCRIPTION,
+                        public: false, // Secret gist — only accessible with token
+                        files: {
+                            [this._GIST_FILENAME]: {
+                                content: JSON.stringify(localStore, null, 2)
+                            }
+                        }
+                    })
+                });
+                if (!createRes.ok) {
+                    const err = await createRes.text();
+                    throw new Error(`Failed to create backup: ${createRes.status} — ${err}`);
+                }
+                return { success: true, message: `✅ Backup created! ${localStore.prompts.length} prompts saved to your private GitHub storage.` };
+            }
+        }
+        catch (e) {
+            console.error('[Quick Prompt Sync Error]', e);
+            return { success: false, message: `Sync failed: ${e.message}` };
+        }
     }
 }
 exports.StorageService = StorageService;

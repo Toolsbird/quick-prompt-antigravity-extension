@@ -64,15 +64,17 @@ class WebviewManager {
         // Initial sync
         this._syncWebview();
     }
-    _syncWebview() {
+    async _syncWebview() {
         if (!this._panel)
             return;
+        const isLoggedIn = await this._storage.checkLoggedIn();
         this._panel.webview.postMessage({
             type: 'sync',
             prompts: this._storage.getPrompts(),
             categories: this._storage.getCategories(),
             skills: this._storage.getSkills(),
             isPro: this._storage.isPro(),
+            isLoggedIn: isLoggedIn,
             isEnabled: vscode.workspace.getConfiguration('quickPrompt').get('enabled', true)
         });
     }
@@ -182,6 +184,33 @@ class WebviewManager {
                 const { content } = message;
                 await vscode.env.clipboard.writeText(content);
                 vscode.window.showInformationMessage('Prompt copied to clipboard!');
+                break;
+            }
+            case 'sync': {
+                try {
+                    const result = await this._storage.syncWithCloud();
+                    if (result.success) {
+                        this._panel?.webview.postMessage({ type: 'success', msg: result.message });
+                        this._syncWebview(); // Refresh UI with merged data
+                    }
+                    else {
+                        this._panel?.webview.postMessage({ type: 'error', msg: result.message });
+                    }
+                }
+                catch (e) {
+                    this._panel?.webview.postMessage({ type: 'error', msg: e.message });
+                }
+                break;
+            }
+            case 'login': {
+                const success = await this._storage.login();
+                if (success) {
+                    this._panel?.webview.postMessage({ type: 'success', msg: 'Successfully connected!' });
+                    this._syncWebview();
+                }
+                else {
+                    this._panel?.webview.postMessage({ type: 'error', msg: 'Login failed. Please check your internet connection.' });
+                }
                 break;
             }
         }
