@@ -1,0 +1,189 @@
+{
+  "name": "quick-prompt-antigravity",
+  "displayName": "Quick Prompt — Antigravity",
+  "description": "Save, organize, and instantly inject AI prompts into Antigravity/VS Code chat. Access favorites from the status bar in one click.",
+  "version": "1.0.0",
+  "publisher": "antigravity",
+  "icon": "resources/icon.png",
+  "engines": {
+    "vscode": "^1.110.0"
+  },
+  "categories": [
+    "Other",
+    "AI"
+  ],
+  "keywords": [
+    "prompt",
+    "ai",
+    "antigravity",
+    "gemini",
+    "quick access",
+    "productivity"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "quickPromptContainer",
+          "title": "Quick Prompts",
+          "icon": "resources/sidebar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "quickPromptContainer": [
+        {
+          "id": "quickPromptExplorer",
+          "name": "My Prompts",
+          "icon": "resources/sidebar-icon.svg",
+          "contextualTitle": "Quick Prompts"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "quickPrompt.addPrompt",
+        "title": "Add New Prompt",
+        "icon": "$(add)"
+      },
+      {
+        "command": "quickPrompt.editPrompt",
+        "title": "Edit Prompt",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "quickPrompt.deletePrompt",
+        "title": "Delete Prompt",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "quickPrompt.toggleFavorite",
+        "title": "Toggle Favorite",
+        "icon": "$(star)"
+      },
+      {
+        "command": "quickPrompt.usePrompt",
+        "title": "Use This Prompt",
+        "icon": "$(play)"
+      },
+      {
+        "command": "quickPrompt.addCategory",
+        "title": "Add Category",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "quickPrompt.deleteCategory",
+        "title": "Delete Category",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "quickPrompt.renameCategory",
+        "title": "Rename Category",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "quickPrompt.searchPrompts",
+        "title": "Search Prompts",
+        "icon": "$(search)"
+      },
+      {
+        "command": "quickPrompt.openManager",
+        "title": "Quick Prompt: Open Manager",
+        "icon": "$(lightning)"
+      },
+      {
+        "command": "quickPrompt.refreshView",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "quickPrompt.openWebview",
+        "title": "Quick Prompt: Open Full UI",
+        "icon": "$(layout)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "quickPrompt.addPrompt",
+          "when": "view == quickPromptExplorer",
+          "group": "navigation@1"
+        },
+        {
+          "command": "quickPrompt.addCategory",
+          "when": "view == quickPromptExplorer",
+          "group": "navigation@2"
+        },
+        {
+          "command": "quickPrompt.searchPrompts",
+          "when": "view == quickPromptExplorer",
+          "group": "navigation@3"
+        },
+        {
+          "command": "quickPrompt.openWebview",
+          "when": "view == quickPromptExplorer",
+          "group": "navigation@4"
+        },
+        {
+          "command": "quickPrompt.refreshView",
+          "when": "view == quickPromptExplorer",
+          "group": "navigation@5"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "quickPrompt.usePrompt",
+          "when": "viewItem == prompt || viewItem == favoritePrompt",
+          "group": "inline@1"
+        },
+        {
+          "command": "quickPrompt.toggleFavorite",
+          "when": "viewItem == prompt || viewItem == favoritePrompt",
+          "group": "inline@2"
+        },
+        {
+          "command": "quickPrompt.editPrompt",
+          "when": "viewItem == prompt || viewItem == favoritePrompt",
+          "group": "inline@3"
+        },
+        {
+          "command": "quickPrompt.deletePrompt",
+          "when": "viewItem == prompt || viewItem == favoritePrompt",
+          "group": "context@1"
+        },
+        {
+          "command": "quickPrompt.renameCategory",
+          "when": "viewItem == category",
+          "group": "inline@1"
+        },
+        {
+          "command": "quickPrompt.deleteCategory",
+          "when": "viewItem == category",
+          "group": "inline@2"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "quickPrompt.searchPrompts",
+        "key": "ctrl+shift+p ctrl+shift+q",
+        "mac": "cmd+shift+q"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "npx @vscode/vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.37",
+    "@types/vscode": "^1.110.0",
+    "typescript": "^5.9.3"
+  }
+}
