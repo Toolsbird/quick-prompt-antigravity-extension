@@ -190,6 +190,21 @@ export const WEBVIEW_STYLES = `
   .btn-ghost:hover { background: var(--surface2); color: var(--text); border-color: var(--text3); }
   .btn-danger { background: transparent; color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
   .btn-danger:hover { background: rgba(239,68,68,0.1); }
+
+  /* Sync / Login pill — matches master-toggle aesthetic */
+  .btn-sync {
+    background: var(--surface2);
+    color: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 6px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    transition: all 0.2s;
+  }
+  .btn-sync:hover { border-color: var(--accent); background: var(--surface2); filter: brightness(1.15); }
+  .btn-sync.synced { border-color: var(--green); color: var(--green); }
   .btn-sm { padding: 5px 10px; font-size: 12px; }
   .btn-icon { padding: 6px; border-radius: 8px; }
 
@@ -524,8 +539,8 @@ export const WEBVIEW_HTML = `
         <span class="toggle-slider"></span>
         <span class="toggle-label" id="masterToggleLabel">Active</span>
       </label>
-      <!-- Login to Sync Button (always visible in header) -->
-      <button id="headerSyncBtn" class="btn btn-ghost btn-sm" style="border-color: var(--border); color: var(--text2); font-size: 11px;" onclick="triggerSync()" title="Login to sync your prompts to private cloud storage">
+      <!-- Login to Sync Button (header only) -->
+      <button id="headerSyncBtn" class="btn btn-sync" onclick="triggerSync()" title="Login to sync your prompts to private cloud storage">
         <span id="headerSyncIcon">🔐</span> <span id="headerSyncText">Login to Sync</span>
       </button>
       <button id="upgradeBtn" class="btn btn-upgrade" onclick="openPremiumModal()" style="display:none;">🚀 Upgrade to Pro</button>
@@ -541,15 +556,7 @@ export const WEBVIEW_HTML = `
         <input class="search-input" type="text" id="searchInput" placeholder="🔍 Search prompts…" oninput="filterPrompts(this.value)" />
       </div>
 
-      <!-- CLOUD SYNC SECTION AT TOP -->
-      <div id="syncSection" style="padding: 10px; border-bottom: 1px solid var(--border); margin: 0 -8px 12px; border-radius: 8px;">
-        <button id="syncBtn" class="btn btn-ghost btn-sm" style="width: 100%; justify-content: center; gap: 8px; border-color: var(--border); color: var(--text2);" onclick="triggerSync()">
-          <span id="syncIcon">🔐</span> <span id="syncText">Login to Sync</span>
-        </button>
-        <div id="syncStatus" style="font-size: 9px; color: var(--text3); margin-top: 6px; line-height: 1.4; text-align: center;">
-          Sign in with GitHub — your data stays in your private GitHub storage.
-        </div>
-      </div>
+
 
       <div class="nav-section-label">Views</div>
       <div class="nav-item active" id="nav-all" onclick="selectNav('all')">
@@ -753,34 +760,19 @@ export const WEBVIEW_JS = `
     updatePremiumUI();
     updateSyncUI();
   }
-  
   function updateSyncUI() {
-    const btn = document.getElementById('syncBtn');
-    const text = document.getElementById('syncText');
-    const icon = document.getElementById('syncIcon');
-    const status = document.getElementById('syncStatus');
     const hBtn = document.getElementById('headerSyncBtn');
     const hText = document.getElementById('headerSyncText');
     const hIcon = document.getElementById('headerSyncIcon');
-    
+
     if (isLoggedIn) {
-      // Sidebar button — green/connected
-      if (btn) { btn.style.borderColor = 'var(--green)'; btn.style.color = 'var(--green)'; }
-      if (text) text.textContent = 'Sync Now';
-      if (icon) icon.textContent = '🔄';
-      if (status) status.textContent = '✅ Connected to private cloud storage';
-      // Header button — green
-      if (hBtn) { hBtn.style.borderColor = 'var(--green)'; hBtn.style.color = 'var(--green)'; }
+      // Header button — green pill (connected state)
+      if (hBtn) { hBtn.classList.add('synced'); hBtn.style.color = 'var(--green)'; }
       if (hText) hText.textContent = 'Sync Now';
       if (hIcon) hIcon.textContent = '🔄';
     } else {
-      // Sidebar button — neutral
-      if (btn) { btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--text2)'; }
-      if (text) text.textContent = 'Login to Sync';
-      if (icon) icon.textContent = '🔐';
-      if (status) status.textContent = 'Data is stored in your private cloud storage.';
-      // Header button — neutral
-      if (hBtn) { hBtn.style.borderColor = 'var(--border)'; hBtn.style.color = 'var(--text2)'; }
+      // Header button — white pill (login state)
+      if (hBtn) { hBtn.classList.remove('synced'); hBtn.style.color = '#ffffff'; }
       if (hText) hText.textContent = 'Login to Sync';
       if (hIcon) hIcon.textContent = '🔐';
     }
