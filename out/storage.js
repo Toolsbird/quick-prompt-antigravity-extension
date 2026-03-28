@@ -122,6 +122,10 @@ class StorageService {
     constructor(context) {
         this._onChange = new vscode.EventEmitter();
         this.onDidChange = this._onChange.event;
+        // --- License Management ---
+        // Publisher master key — only Toolsbird knows this. Keep it secret, keep it safe.
+        // Never commit the real value to a public repo; rotate it if ever exposed.
+        this._PUBLISHER_MASTER_KEY = 'TB-QP-MASTER-7f3a2b9c1e4d8f6a0b5c3d2e1f4a7b8c9d0e2f3a4b5c6d7e8f9a0b1c2d3e4f';
         // --- GitHub Gist Cloud Sync (VS Code native auth) ---
         this._GIST_FILENAME = 'quick-prompt-backup.json';
         this._GIST_DESCRIPTION = 'Quick Prompt — Antigravity Extension Backup';
@@ -154,8 +158,8 @@ class StorageService {
                         isFavorite: true,
                     }
                 ],
-                isPro: true, // Auto-pro for this device
-                licenseKey: 'DEV-INTERNAL-LICENSE',
+                isPro: false, // Free tier by default — users must activate with a license key
+                licenseKey: '',
             });
         }
     }
@@ -279,20 +283,27 @@ class StorageService {
         store.prompts = store.prompts.map((p) => p.category === oldName ? { ...p, category: newName } : p);
         await this._saveStore(store);
     }
-    // --- License Management ---
     isPro() {
         return !!this._getStore().isPro;
     }
     async activatePro(key) {
-        // Simple verification for the simulation
-        // In production, this would call your licensing server (e.g. Gumroad/LemonSqueezy)
-        if (key.length >= 10) {
+        const trimmed = key.trim();
+        // Publisher master key: always grants Pro without a server call.
+        if (trimmed === this._PUBLISHER_MASTER_KEY) {
             const store = this._getStore();
             store.isPro = true;
-            store.licenseKey = key;
+            store.licenseKey = trimmed;
             await this._saveStore(store);
             return true;
         }
+        // TODO: Replace the block below with a real licensing API call
+        // (e.g. LemonSqueezy / Gumroad) before public release.
+        // Example:
+        //   const res = await fetch('https://api.lemonsqueezy.com/v1/licenses/validate', {
+        //     method: 'POST', body: JSON.stringify({ license_key: trimmed }), ... });
+        //   if (res.ok && (await res.json()).valid) { ... grant pro ... }
+        //
+        // For now: reject all keys that are not the publisher master key.
         return false;
     }
     // --- Skill CRUD ---
@@ -344,6 +355,7 @@ class StorageService {
         if (skill) {
             skill.isFavorite = !skill.isFavorite;
             skill.updatedAt = Date.now();
+            await this._saveStore(store); // Persist the toggled state
             return skill.isFavorite;
         }
         return false;

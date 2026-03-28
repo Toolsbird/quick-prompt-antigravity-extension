@@ -1137,5 +1137,4 @@ export const WEBVIEW_JS = `
     area.selectionStart = area.selectionEnd = start + v.length;
   }
 
-  // NOTE: triggerSync() is defined above — this duplicate has been removed to fix the login loop.
 `;
