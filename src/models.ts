@@ -21,4 +21,6 @@ export interface Category {
 export interface PromptStore {
   prompts: Prompt[];
   categories: Category[];
+  isPro?: boolean;
+  licenseKey?: string;
 }

@@ -124,6 +124,13 @@ class StorageService {
         this.onDidChange = this._onChange.event;
         this._context = context;
         this._seedIfEmpty();
+        // Force PRO for internal developer/this device
+        const store = this._getStore();
+        if (!store.isPro) {
+            store.isPro = true;
+            store.licenseKey = 'DEV-INTERNAL-LICENSE';
+            this._saveStore(store);
+        }
     }
     _seedIfEmpty() {
         const store = this._context.globalState.get(STORE_KEY);
@@ -131,6 +138,8 @@ class StorageService {
             this._context.globalState.update(STORE_KEY, {
                 prompts: DEFAULT_PROMPTS,
                 categories: DEFAULT_CATEGORIES,
+                isPro: true, // INTERNAL DEV BUILD: Auto-activate PRO
+                licenseKey: 'DEV-INTERNAL-LICENSE',
             });
         }
     }
@@ -156,6 +165,10 @@ class StorageService {
     }
     async addPrompt(prompt) {
         const store = this._getStore();
+        // PREMIUM CHECK: Limit non-pro users to 10 prompts
+        if (!store.isPro && store.prompts.length >= 10) {
+            throw new Error('🚀 You have reached the limit for free prompts (10). Upgrade to Pro for unlimited prompts!');
+        }
         const newPrompt = {
             ...prompt,
             id: `prompt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -245,6 +258,22 @@ class StorageService {
         }
         store.prompts = store.prompts.map((p) => p.category === oldName ? { ...p, category: newName } : p);
         await this._saveStore(store);
+    }
+    // --- License Management ---
+    isPro() {
+        return !!this._getStore().isPro;
+    }
+    async activatePro(key) {
+        // Simple verification for the simulation
+        // In production, this would call your licensing server (e.g. Gumroad/LemonSqueezy)
+        if (key.length >= 10) {
+            const store = this._getStore();
+            store.isPro = true;
+            store.licenseKey = key;
+            await this._saveStore(store);
+            return true;
+        }
+        return false;
     }
 }
 exports.StorageService = StorageService;

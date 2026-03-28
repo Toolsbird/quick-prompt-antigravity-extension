@@ -74,6 +74,7 @@ class WebviewManager {
             type: 'sync',
             prompts: this._storage.getPrompts(),
             categories: this._storage.getCategories(),
+            isPro: this._storage.isPro(),
         });
     }
     async _handleMessage(message) {
@@ -128,6 +129,18 @@ class WebviewManager {
                 }
                 break;
             }
+            case 'activateLicense': {
+                const { key } = message;
+                const success = await this._storage.activatePro(key);
+                if (success) {
+                    this._panel?.webview.postMessage({ type: 'success', msg: '🛡️ License Activated! You are now Pro.' });
+                    this._syncWebview();
+                }
+                else {
+                    this._panel?.webview.postMessage({ type: 'error', msg: '❌ Invalid license key. Please try again.' });
+                }
+                break;
+            }
             case 'deleteCategory': {
                 const { name } = message;
                 await this._storage.deleteCategory(name);
@@ -179,6 +192,7 @@ class WebviewManager {
     --radius: 16px;
     --radius-sm: 10px;
     --shadow: 0 12px 40px rgba(0,0,0,0.5);
+    --gold-gradient: linear-gradient(135deg, #f59e0b, #fbbf24);
   }
 
   body {
@@ -303,6 +317,74 @@ class WebviewManager {
   .btn-danger:hover { background: rgba(239,68,68,0.1); }
   .btn-sm { padding: 5px 10px; font-size: 12px; }
   .btn-icon { padding: 6px; border-radius: 8px; }
+
+  .btn-upgrade {
+    background: var(--gold-gradient);
+    color: #451a03;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 10px 18px;
+    border-radius: 20px;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  .btn-upgrade:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.5);
+    filter: brightness(1.1);
+  }
+
+  .pro-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: var(--gold-gradient);
+    color: #451a03;
+    font-size: 10px;
+    font-weight: 900;
+    border-radius: 6px;
+    text-transform: uppercase;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: gold-pulse 2s infinite;
+  }
+
+  @keyframes gold-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  .limit-counter {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .limit-bar {
+    height: 4px;
+    flex: 1;
+    background: var(--surface2);
+    margin: 0 10px;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .limit-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s;
+  }
+  .limit-fill.limit-full {
+    background: var(--red);
+  }
 
   /* ===== CARDS ===== */
   .card-grid {
@@ -462,6 +544,42 @@ class WebviewManager {
   #toast.show { transform: translateY(0); opacity: 1; }
   #toast.success { border-left: 4px solid var(--green); }
   #toast.error { border-left: 4px solid var(--red); }
+
+  .premium-modal-header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .premium-modal-header .icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    display: block;
+  }
+  .premium-modal-header h2 {
+    font-size: 24px;
+    font-weight: 800;
+    background: var(--gold-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .premium-features-list {
+    list-style: none;
+    margin: 20px 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .premium-features-list li {
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text2);
+  }
+  .premium-features-list li i {
+    color: var(--green);
+    font-size: 14px;
+  }
+  #toast.error { border-left: 4px solid var(--red); }
   #toast.info { border-left: 4px solid var(--accent); }
 
   /* ===== SCROLLBAR ===== */
@@ -545,10 +663,11 @@ class WebviewManager {
   <div class="header">
     <div class="header-logo">⚡</div>
     <div>
-      <div class="header-title">Quick Prompt Manager</div>
+      <div class="header-title">Quick Prompt Manager <span id="proBadge" class="pro-badge" style="display:none;">PRO</span></div>
       <div class="header-sub">Antigravity / VS Code Extension</div>
     </div>
     <div class="header-actions">
+      <button id="upgradeBtn" class="btn btn-upgrade" onclick="openPremiumModal()" style="display:none;">🚀 Upgrade to Pro</button>
       <button class="btn btn-primary" onclick="openAddModal()">＋ New Prompt</button>
     </div>
   </div>
@@ -576,6 +695,13 @@ class WebviewManager {
       <div class="cat-add-row" style="margin-top:8px;">
         <input class="cat-add-input" id="newCatInput" type="text" placeholder="New category…" onkeydown="if(event.key==='Enter')addCategoryFromInput()" />
         <button class="cat-add-btn" onclick="addCategoryFromInput()">＋</button>
+      </div>
+
+      <!-- PREMIUM LIMITS -->
+      <div id="premiumLimitBox" class="limit-counter" style="display:none; margin-top:20px;">
+        <div>Free Prompts</div>
+        <div class="limit-bar"><div id="limitFill" class="limit-fill" style="width:0%"></div></div>
+        <div id="limitText">0/10</div>
       </div>
     </div>
 
@@ -645,6 +771,34 @@ class WebviewManager {
   </div>
 </div>
 
+<!-- PREMIUM MODAL -->
+<div class="modal-overlay" id="premiumModal" onclick="closeModalOnBackdrop(event)">
+  <div class="modal">
+    <div class="premium-modal-header">
+      <span class="icon">💎</span>
+      <h2>Upgrade to Pro</h2>
+      <p style="font-size: 14px; color: var(--text2); margin-top: 8px;">Unleash the full power of Quick Prompt</p>
+    </div>
+
+    <ul class="premium-features-list">
+      <li><i>✔</i> Unlimited Prompts</li>
+      <li><i>✔</i> Cloud Sync (Coming Soon)</li>
+      <li><i>✔</i> Unlimited Status Pins</li>
+      <li><i>✔</i> Priority AI Models</li>
+    </ul>
+
+    <div class="form-group" style="margin-top: 24px;">
+      <label class="form-label">License Key</label>
+      <input class="form-input" id="licenseKeyInput" type="text" placeholder="QP-XXXX-XXXX-XXXX" style="letter-spacing: 1px;" />
+    </div>
+
+    <div class="modal-actions" style="flex-direction: column; align-items: stretch; gap: 12px;">
+      <button class="btn btn-primary" onclick="activateLicense()" style="justify-content: center; height: 44px; font-size: 15px;">✨ Activate Pro Now</button>
+      <button class="btn btn-ghost" onclick="closePremiumModal()" style="justify-content: center;">Maybe later</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
@@ -667,9 +821,11 @@ class WebviewManager {
     if (msg.type === 'sync') {
       allPrompts = msg.prompts || [];
       allCategories = msg.categories || [];
+      isPro = msg.isPro || false;
       render();
     } else if (msg.type === 'success') {
       closeModal();
+      closePremiumModal();
       showToast(msg.msg, 'success');
     } else if (msg.type === 'error') {
       showToast(msg.msg, 'error');
@@ -681,6 +837,50 @@ class WebviewManager {
     renderCards();
     updateBadges();
     populateCategorySelect();
+    updatePremiumUI();
+  }
+
+  function updatePremiumUI() {
+    const badge = document.getElementById('proBadge');
+    const upgradeBtn = document.getElementById('upgradeBtn');
+    const limitBox = document.getElementById('premiumLimitBox');
+    
+    if (isPro) {
+      badge.style.display = 'inline-flex';
+      upgradeBtn.style.display = 'none';
+      limitBox.style.display = 'none';
+    } else {
+      badge.style.display = 'none';
+      upgradeBtn.style.display = 'inline-flex';
+      limitBox.style.display = 'block';
+      
+      const count = allPrompts.length;
+      const fill = document.getElementById('limitFill');
+      const text = document.getElementById('limitText');
+      const percent = Math.min((count / 10) * 100, 100);
+      
+      fill.style.width = percent + '%';
+      text.textContent = count + '/10';
+      if (count >= 10) fill.classList.add('limit-full');
+      else fill.classList.remove('limit-full');
+    }
+  }
+
+  function openPremiumModal() {
+    document.getElementById('premiumModal').classList.add('open');
+  }
+
+  function closePremiumModal() {
+    document.getElementById('premiumModal').classList.remove('open');
+  }
+
+  function activateLicense() {
+    const key = document.getElementById('licenseKeyInput').value.trim();
+    if (!key) {
+      showToast('Please enter a license key', 'error');
+      return;
+    }
+    vscode.postMessage({ type: 'activateLicense', key });
   }
 
   function renderCategoryNav() {
