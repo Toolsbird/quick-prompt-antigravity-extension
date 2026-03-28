@@ -1,26 +1,27 @@
 # Quick Prompt — Antigravity & VS Code ⚡
 
-**Stop searching for your favorite AI prompts. Save them, organize them, and inject them into your AI Agent with one click.**
+**Master your AI workflow. Save, organize, and inject your favorite prompts directly into your AI Agent with zero friction.**
 
-Built for "Vibe Coders" who want a premium, high-speed workflow for AI-driven development.
-
-![Quick Prompt Manager](https://raw.githubusercontent.com/Toolsbird/quick-prompt-antigravity-extension/main/resources/preview.png)
+Quick Prompt is the essential productivity tool for developers using AI-assisted coding environments. It eliminates the need to rewrite or search for repetitive prompts by putting your entire library at your fingertips.
 
 ---
 
-## **💎 Premium Features**
+## **💎 Core Features**
 
-### **⚡ One-Click Status Bar Injection**
-Pin your most-used prompts (like `Debug this code` or `Explain logic`) directly to your **Bottom Status Bar**. One click opens the AI Agent and prepares your prompt instantly.
+### **⚡ One-Click Status Bar Access**
+Pin your most critical prompts (e.g., `Debug`, `Refactor`, `Analyze Performance`) directly to your **Bottom Status Bar**. A single click opens your AI Agent and fills the input box automatically.
 
-### **🍱 Smart Category Management**
-Organize your prompts into clean categories (e.g., `Debugging`, `Refactoring`, `Unit Tests`). Access them all from the **Activity Bar Sidebar** without leaving your code.
+### **🍱 Unified Category System**
+Organize your prompts into structured categories like `Architecture`, `Testing`, `Documentation`, or `Code Review`. Access every prompt from the sidebar without interrupting your coding flow.
 
-### **📙 Custom Prompt Manager**
-A beautiful, **Premium Vibrant Orange** dashboard for creating and managing your prompt library. Includes fuzzy search and a modern glassmorphism design.
+### **📙 Professional Prompt Dashboard**
+A powerful, **Premium Vibrant Orange** interface for creating, editing, and searching your entire prompt library. Includes fuzzy search and a high-performance user experience.
 
-### **✨ Context Variables**
-Use dynamic variables like `{{selection}}`, `{{file}}`, and `{{language}}` to automatically include your current code context in your AI requests.
+### **✨ Context-Aware Variables**
+Enhance your AI queries with dynamic variables:
+- `{{selection}}`: Includes your currently selected code.
+- `{{file}}`: Includes the name of your active file.
+- `{{language}}`: Specifies the programming language.
 
 ---
 
@@ -28,24 +29,24 @@ Use dynamic variables like `{{selection}}`, `{{file}}`, and `{{language}}` to au
 
 ### **Option 1: Manual Install (.VSIX)**
 1. Download the latest `quick-prompt-antigravity.vsix` from the [Releases](https://github.com/Toolsbird/quick-prompt-antigravity-extension/releases) section.
-2. In Antigravity/VS Code, open the **Extensions** tab (`Cmd+Shift+X`).
+2. In your IDE, open the **Extensions** tab (`Cmd+Shift+X`).
 3. Click the **...** (three dots) in the top-right corner.
 4. Select **'Install from VSIX...'** and choose the downloaded file.
 
-### **Option 2: Marketplace (Coming Soon!)**
+### **Option 2: Marketplace**
 Search for **"Quick Prompt Antigravity"** in the extension gallery.
 
 ---
 
-## **🛠️ How to Use**
+## **🛠️ Get Started**
 
-1. **Open Manager:** Press `Cmd + Shift + P` and type **"Quick Prompt: Open Full UI"**.
-2. **Add Prompt:** Create your first prompt and click the **Star (⭐)** icon to favorite it.
-3. **Inject:** Click your favorite prompt in the **Status Bar** or Sidebar to auto-fill your AI Agent!
+1. **Deploy UI:** Press `Cmd + Shift + P` and type **"Quick Prompt: Open Full UI"**.
+2. **Save Prompts:** Add your first set of prompts and click the **Star (⭐)** icon to pin them permanently.
+3. **Boost Efficiency:** Click any pinned prompt in the **Status Bar** to immediately prepare your next AI task.
 
 ---
 
-## **🧡 Built for the Vibe**
-Part of the **Toolsbird** ecosystem. Designed to be lightweight, fast, and visually stunning.
+## **🤝 Support & Community**
+Developed by the **Toolsbird** team to streamline modern developer workflows.
 
-**[Visit the Repo](https://github.com/Toolsbird/quick-prompt-antigravity-extension)** | **[Report an Issue](https://github.com/Toolsbird/quick-prompt-antigravity-extension/issues)**
+**[GitHub Repository](https://github.com/Toolsbird/quick-prompt-antigravity-extension)** | **[Submit Feedback](https://github.com/Toolsbird/quick-prompt-antigravity-extension/issues)**
