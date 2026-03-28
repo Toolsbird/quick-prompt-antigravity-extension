@@ -6,7 +6,7 @@
   "publisher": "antigravity",
   "icon": "resources/icon.png",
   "engines": {
-    "vscode": "^1.110.0"
+    "vscode": "^1.100.0"
   },
   "categories": [
     "Other",

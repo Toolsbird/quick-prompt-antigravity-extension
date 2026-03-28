@@ -75,6 +75,7 @@ export function registerCommands(
       const isFavorite = favPick?.startsWith('⭐') ?? false;
 
       await storage.addPrompt({ title, content, category, isFavorite, tags: [] });
+      treeProvider.refresh();
       vscode.window.showInformationMessage(`✅ Prompt "${title}" saved!`);
     })
   );
@@ -109,6 +110,7 @@ export function registerCommands(
       if (content === undefined) { return; }
 
       await storage.updatePrompt(prompt.id, { title, content });
+      treeProvider.refresh();
       vscode.window.showInformationMessage(`✅ Prompt "${title}" updated!`);
     })
   );
@@ -126,6 +128,7 @@ export function registerCommands(
       );
       if (confirm === 'Delete') {
         await storage.deletePrompt(prompt.id);
+        treeProvider.refresh();
         vscode.window.showInformationMessage(`Prompt deleted.`);
       }
     })
@@ -136,6 +139,7 @@ export function registerCommands(
     vscode.commands.registerCommand('quickPrompt.toggleFavorite', async (item?: PromptTreeItem) => {
       if (!item?.prompt) { return; }
       const isFav = await storage.toggleFavorite(item.prompt.id);
+      treeProvider.refresh();
       vscode.window.showInformationMessage(
         isFav
           ? `⭐ "${item.prompt.title}" added to status bar!`
@@ -156,6 +160,7 @@ export function registerCommands(
       if (!name) { return; }
       try {
         await storage.addCategory(name);
+        treeProvider.refresh();
         vscode.window.showInformationMessage(`📁 Category "${name}" created!`);
       } catch (e: unknown) {
         vscode.window.showErrorMessage((e as Error).message);
@@ -176,6 +181,7 @@ export function registerCommands(
       );
       if (confirm === 'Delete') {
         await storage.deleteCategory(name);
+        treeProvider.refresh();
         vscode.window.showInformationMessage(`Category "${name}" deleted.`);
       }
     })
@@ -194,6 +200,7 @@ export function registerCommands(
       });
       if (!newName || newName === name) { return; }
       await storage.renameCategory(name, newName);
+      treeProvider.refresh();
       vscode.window.showInformationMessage(`Category renamed to "${newName}"`);
     })
   );

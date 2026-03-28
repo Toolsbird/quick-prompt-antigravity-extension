@@ -93,6 +93,7 @@ function registerCommands(context, storage, treeProvider) {
         const favPick = await vscode.window.showQuickPick(['⭐ Yes — pin to status bar', 'No'], { title: 'Add to Favorites (status bar)?' });
         const isFavorite = favPick?.startsWith('⭐') ?? false;
         await storage.addPrompt({ title, content, category, isFavorite, tags: [] });
+        treeProvider.refresh();
         vscode.window.showInformationMessage(`✅ Prompt "${title}" saved!`);
     }));
     // ---- Edit Prompt ----
@@ -126,6 +127,7 @@ function registerCommands(context, storage, treeProvider) {
             return;
         }
         await storage.updatePrompt(prompt.id, { title, content });
+        treeProvider.refresh();
         vscode.window.showInformationMessage(`✅ Prompt "${title}" updated!`);
     }));
     // ---- Delete Prompt ----
@@ -137,6 +139,7 @@ function registerCommands(context, storage, treeProvider) {
         const confirm = await vscode.window.showWarningMessage(`Delete prompt "${prompt.title}"? This cannot be undone.`, { modal: true }, 'Delete');
         if (confirm === 'Delete') {
             await storage.deletePrompt(prompt.id);
+            treeProvider.refresh();
             vscode.window.showInformationMessage(`Prompt deleted.`);
         }
     }));
@@ -146,6 +149,7 @@ function registerCommands(context, storage, treeProvider) {
             return;
         }
         const isFav = await storage.toggleFavorite(item.prompt.id);
+        treeProvider.refresh();
         vscode.window.showInformationMessage(isFav
             ? `⭐ "${item.prompt.title}" added to status bar!`
             : `☆ "${item.prompt.title}" removed from status bar.`);
@@ -163,6 +167,7 @@ function registerCommands(context, storage, treeProvider) {
         }
         try {
             await storage.addCategory(name);
+            treeProvider.refresh();
             vscode.window.showInformationMessage(`📁 Category "${name}" created!`);
         }
         catch (e) {
@@ -178,6 +183,7 @@ function registerCommands(context, storage, treeProvider) {
         const confirm = await vscode.window.showWarningMessage(`Delete category "${name}"? Prompts inside will move to "Uncategorized".`, { modal: true }, 'Delete');
         if (confirm === 'Delete') {
             await storage.deleteCategory(name);
+            treeProvider.refresh();
             vscode.window.showInformationMessage(`Category "${name}" deleted.`);
         }
     }));
@@ -196,6 +202,7 @@ function registerCommands(context, storage, treeProvider) {
             return;
         }
         await storage.renameCategory(name, newName);
+        treeProvider.refresh();
         vscode.window.showInformationMessage(`Category renamed to "${newName}"`);
     }));
     // ---- Search Prompts (Quick Pick) ----

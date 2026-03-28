@@ -167,8 +167,8 @@ class WebviewManager {
     --surface: #161b2e;
     --surface2: #1e2540;
     --border: #2a3050;
-    --accent: #6c63ff;
-    --accent2: #a78bfa;
+    --accent: #FF5D00;
+    --accent2: #FF9E00;
     --gold: #f59e0b;
     --gold-light: #fcd34d;
     --green: #10b981;
@@ -176,14 +176,14 @@ class WebviewManager {
     --text: #e2e8f0;
     --text2: #94a3b8;
     --text3: #64748b;
-    --radius: 12px;
-    --radius-sm: 8px;
-    --shadow: 0 8px 32px rgba(0,0,0,0.4);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --shadow: 0 12px 40px rgba(0,0,0,0.5);
   }
 
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    background: var(--bg);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: radial-gradient(circle at 50% 0%, #1e2548 0%, var(--bg) 70%);
     color: var(--text);
     min-height: 100vh;
     overflow-x: hidden;
@@ -204,13 +204,14 @@ class WebviewManager {
   }
 
   .header-logo {
-    width: 36px; height: 36px;
+    width: 40px; height: 40px;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border-radius: 10px;
+    border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-    box-shadow: 0 4px 12px rgba(108,99,255,0.3);
+    font-size: 20px;
+    box-shadow: 0 4px 15px rgba(255,93,0,0.4);
     flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.1);
   }
 
   .header-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
@@ -294,10 +295,10 @@ class WebviewManager {
     transition: all 0.15s;
     white-space: nowrap;
   }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #7c74ff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(108,99,255,0.4); }
-  .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
-  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #000; font-weight: 700; }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255,93,0,0.5); filter: brightness(1.1); }
+  .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); backdrop-filter: blur(4px); }
+  .btn-ghost:hover { background: rgba(255,255,255,0.05); color: var(--text); border-color: var(--text3); }
   .btn-danger { background: transparent; color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
   .btn-danger:hover { background: rgba(239,68,68,0.1); }
   .btn-sm { padding: 5px 10px; font-size: 12px; }
@@ -922,7 +923,7 @@ class WebviewManager {
 }
 exports.WebviewManager = WebviewManager;
 async function injectPromptToChat(content) {
-    // Replace template variables
+    // Step 1: Replace template variables
     const editor = vscode.window.activeTextEditor;
     let resolved = content;
     if (editor) {
@@ -934,36 +935,33 @@ async function injectPromptToChat(content) {
             .replace(/\{\{file\}\}/g, fileName)
             .replace(/\{\{language\}\}/g, language);
     }
-    // Try known Antigravity / VS Code AI chat commands
-    const chatCommands = [
-        'antigravity.chat.open',
-        'workbench.action.chat.open',
-        'github.copilot.chat.open',
-        'aichat.newChat',
-    ];
-    // Copy to clipboard as a reliable fallback
+    // Step 2: Copy resolved text to clipboard — always works as fallback
     await vscode.env.clipboard.writeText(resolved);
-    let chatOpened = false;
-    for (const cmd of chatCommands) {
+    // Step 3: Try opening the Antigravity / VS Code Agent panel
+    const agentOpenCommands = [
+        'antigravity.agent.open',
+        'antigravity.chat.open',
+        'cursor.chat.open',
+        'workbench.action.chat.open',
+    ];
+    for (const cmd of agentOpenCommands) {
         try {
-            await vscode.commands.executeCommand(cmd, resolved);
-            chatOpened = true;
+            await vscode.commands.executeCommand(cmd);
             break;
         }
         catch {
-            // Try next command
+            // Try next
         }
     }
-    if (chatOpened) {
-        vscode.window.showInformationMessage('⚡ Prompt injected into AI Chat!');
+    // Step 4: Wait for the Agent panel to focus its input field
+    await new Promise(resolve => setTimeout(resolve, 500));
+    // Step 5: Attempt to paste into the focused input
+    try {
+        await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
     }
-    else {
-        // Fallback: show the prompt in a dedicated input box so the user can copy it
-        vscode.window.showInformationMessage('📋 Prompt copied to clipboard! Paste it into the AI Chat input.', 'Open Chat').then((choice) => {
-            if (choice === 'Open Chat') {
-                // Try to at least focus the panel
-                vscode.commands.executeCommand('workbench.view.extensions');
-            }
-        });
+    catch {
+        // Silently ignore — clipboard still has the text
     }
+    // Step 6: Non-blocking status bar hint instead of annoying popup
+    vscode.window.setStatusBarMessage('⚡ Prompt ready — press Cmd+V if not auto-pasted', 4000);
 }
