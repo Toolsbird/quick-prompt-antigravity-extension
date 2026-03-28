@@ -194,20 +194,21 @@ exports.WEBVIEW_STYLES = `
   .btn-danger { background: transparent; color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
   .btn-danger:hover { background: rgba(239,68,68,0.1); }
 
-  /* Sync / Login pill — matches master-toggle aesthetic */
+  /* Sync / Login pill — solid white pill matching master-toggle appearance */
   .btn-sync {
-    background: var(--surface2);
+    background: #ffffff;
     color: #0f172a;
-    border: 1px solid var(--border);
+    border: 1px solid rgba(255,255,255,0.25);
     border-radius: 99px;
     padding: 6px 14px;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.2px;
     transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
   }
-  .btn-sync:hover { border-color: var(--accent); background: var(--surface2); filter: brightness(1.15); }
-  .btn-sync.synced { border-color: var(--green); color: var(--green); }
+  .btn-sync:hover { filter: brightness(0.95); border-color: rgba(255,255,255,0.5); }
+  .btn-sync.synced { background: rgba(16,185,129,0.12); border-color: var(--green); color: var(--green); }
   .btn-sm { padding: 5px 10px; font-size: 12px; }
   .btn-icon { padding: 6px; border-radius: 8px; }
 
@@ -558,8 +559,6 @@ exports.WEBVIEW_HTML = `
         <input class="search-input" type="text" id="searchInput" placeholder="🔍 Search prompts…" oninput="filterPrompts(this.value)" />
       </div>
 
-
-
       <div class="nav-section-label">Views</div>
       <div class="nav-item active" id="nav-all" onclick="selectNav('all')">
         <span class="icon">📋</span> All Prompts
@@ -767,13 +766,13 @@ exports.WEBVIEW_JS = `
     const hIcon = document.getElementById('headerSyncIcon');
 
     if (isLoggedIn) {
-      // Header button — green pill (connected state)
-      if (hBtn) { hBtn.classList.add('synced'); hBtn.style.color = 'var(--green)'; }
+      // Connected — green tinted pill
+      if (hBtn) { hBtn.classList.add('synced'); hBtn.style.removeProperty('color'); }
       if (hText) hText.textContent = 'Sync Now';
       if (hIcon) hIcon.textContent = '🔄';
     } else {
-      // Header button — dark text pill (login state, light background)
-      if (hBtn) { hBtn.classList.remove('synced'); hBtn.style.color = '#0f172a'; }
+      // Logged out — white pill, dark text (set by CSS, remove any inline override)
+      if (hBtn) { hBtn.classList.remove('synced'); hBtn.style.removeProperty('color'); }
       if (hText) hText.textContent = 'Login to Sync';
       if (hIcon) hIcon.textContent = '🔐';
     }
