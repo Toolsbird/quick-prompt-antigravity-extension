@@ -142,10 +142,10 @@ class StorageService {
             }
         }
     }
-    _seedIfEmpty() {
+    async _seedIfEmpty() {
         const store = this._context.globalState.get(STORE_KEY);
         if (!store || (store.prompts.length === 0 && (!store.skills || store.skills.length === 0))) {
-            this._context.globalState.update(STORE_KEY, {
+            await this._context.globalState.update(STORE_KEY, {
                 prompts: DEFAULT_PROMPTS,
                 categories: DEFAULT_CATEGORIES,
                 skills: [
@@ -158,17 +158,22 @@ class StorageService {
                         isFavorite: true,
                     }
                 ],
-                isPro: false, // Free tier by default — users must activate with a license key
+                isPro: false,
                 licenseKey: '',
             });
+            this._onChange.fire();
         }
     }
     _getStore() {
-        return (this._context.globalState.get(STORE_KEY) || {
-            prompts: [],
-            categories: [],
-            skills: [], // Default empty skills
-        });
+        const store = this._context.globalState.get(STORE_KEY);
+        if (!store) {
+            return {
+                prompts: [],
+                categories: [],
+                skills: [],
+            };
+        }
+        return store;
     }
     async _saveStore(store) {
         await this._context.globalState.update(STORE_KEY, store);

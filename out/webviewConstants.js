@@ -928,8 +928,9 @@ exports.WEBVIEW_JS = `
   }
 
   function renderSkillCard(s) {
+    const favClass = s.isFavorite ? 'is-favorite' : '';
     return \`
-      <div class="prompt-card" onclick="editSkill('\${s.id}')">
+      <div class="prompt-card \${favClass}" onclick="editSkill('\${s.id}')">
         <div class="card-header">
           <div class="card-icon">🧠</div>
           <div class="card-title">\${escHtml(s.name)}</div>
@@ -941,6 +942,9 @@ exports.WEBVIEW_JS = `
           <div class="spacer"></div>
           <button class="btn btn-ghost btn-icon btn-sm" onclick="event.stopPropagation(); editSkill('\${s.id}')">✏️</button>
           <button class="btn btn-danger btn-icon btn-sm" onclick="event.stopPropagation(); deleteSkill('\${s.id}')">🗑️</button>
+          <button class="fav-btn" onclick="event.stopPropagation(); toggleSkillFavorite('\${s.id}')">
+            \${s.isFavorite ? '⭐' : '☆'}
+          </button>
         </div>
       </div>
     \`;
@@ -972,6 +976,10 @@ exports.WEBVIEW_JS = `
 
   function toggleFavorite(id) {
     vscode.postMessage({ type: 'toggleFavorite', id });
+  }
+
+  function toggleSkillFavorite(id) {
+    vscode.postMessage({ type: 'toggleSkillFavorite', id });
   }
 
   function deletePrompt(id) {

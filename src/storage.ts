@@ -106,10 +106,10 @@ export class StorageService {
     }
   }
 
-  private _seedIfEmpty(): void {
+  private async _seedIfEmpty(): Promise<void> {
     const store = this._context.globalState.get<PromptStore>(STORE_KEY);
     if (!store || (store.prompts.length === 0 && (!store.skills || store.skills.length === 0))) {
-      this._context.globalState.update(STORE_KEY, {
+      await this._context.globalState.update(STORE_KEY, {
         prompts: DEFAULT_PROMPTS,
         categories: DEFAULT_CATEGORIES,
         skills: [
@@ -122,20 +122,23 @@ export class StorageService {
             isFavorite: true,
           }
         ],
-        isPro: false,  // Free tier by default — users must activate with a license key
+        isPro: false,
         licenseKey: '',
       });
+      this._onChange.fire();
     }
   }
 
   private _getStore(): PromptStore {
-    return (
-      this._context.globalState.get<PromptStore>(STORE_KEY) || {
+    const store = this._context.globalState.get<PromptStore>(STORE_KEY);
+    if (!store) {
+      return {
         prompts: [],
         categories: [],
-        skills: [], // Default empty skills
-      }
-    );
+        skills: [],
+      };
+    }
+    return store;
   }
 
   private async _saveStore(store: PromptStore): Promise<void> {

@@ -37,8 +37,16 @@ exports.registerCommands = registerCommands;
 const vscode = __importStar(require("vscode"));
 const actions_1 = require("./actions");
 function registerCommands(context, storage, treeProvider) {
+    function checkEnabled() {
+        return vscode.workspace.getConfiguration('quickPrompt').get('enabled', true);
+    }
+    function showDisabledWarning() {
+        vscode.window.showWarningMessage('⚡ Quick Prompt is currently disabled. Re-enable it from the Dashboard to use this feature.');
+    }
     // ---- Use Prompt (inject to chat) ----
     context.subscriptions.push(vscode.commands.registerCommand('quickPrompt.usePrompt', async (item) => {
+        if (!checkEnabled())
+            return showDisabledWarning();
         if (item?.prompt) {
             await storage.incrementUseCount(item.prompt.id);
             await (0, actions_1.injectPrompt)(item.prompt, storage);
@@ -46,6 +54,8 @@ function registerCommands(context, storage, treeProvider) {
     }));
     // ---- Inject by ID (used by status bar) ----
     context.subscriptions.push(vscode.commands.registerCommand('quickPrompt.injectPromptById', async (id) => {
+        if (!checkEnabled())
+            return showDisabledWarning();
         const prompt = storage.getPrompts().find((p) => p.id === id);
         if (prompt) {
             await storage.incrementUseCount(id);
@@ -54,6 +64,8 @@ function registerCommands(context, storage, treeProvider) {
     }));
     // ---- Add Prompt ----
     context.subscriptions.push(vscode.commands.registerCommand('quickPrompt.addPrompt', async () => {
+        if (!checkEnabled())
+            return showDisabledWarning();
         const title = await vscode.window.showInputBox({
             title: 'New Prompt — Title',
             prompt: 'Enter a name for your prompt',
@@ -98,6 +110,8 @@ function registerCommands(context, storage, treeProvider) {
     }));
     // ---- Edit Prompt ----
     context.subscriptions.push(vscode.commands.registerCommand('quickPrompt.editPrompt', async (item) => {
+        if (!checkEnabled())
+            return showDisabledWarning();
         let prompt = item?.prompt;
         if (!prompt) {
             const prompts = storage.getPrompts();
@@ -132,6 +146,8 @@ function registerCommands(context, storage, treeProvider) {
     }));
     // ---- Delete Prompt ----
     context.subscriptions.push(vscode.commands.registerCommand('quickPrompt.deletePrompt', async (item) => {
+        if (!checkEnabled())
+            return showDisabledWarning();
         const prompt = item?.prompt;
         if (!prompt) {
             return;
@@ -145,6 +161,8 @@ function registerCommands(context, storage, treeProvider) {
     }));
     // ---- Toggle Favorite ----
     context.subscriptions.push(vscode.commands.registerCommand('quickPrompt.toggleFavorite', async (item) => {
+        if (!checkEnabled())
+            return showDisabledWarning();
         if (!item?.prompt) {
             return;
         }
@@ -156,6 +174,8 @@ function registerCommands(context, storage, treeProvider) {
     }));
     // ---- Add Category ----
     context.subscriptions.push(vscode.commands.registerCommand('quickPrompt.addCategory', async () => {
+        if (!checkEnabled())
+            return showDisabledWarning();
         const name = await vscode.window.showInputBox({
             title: 'New Category',
             prompt: 'Enter a name for the new category',
@@ -176,6 +196,8 @@ function registerCommands(context, storage, treeProvider) {
     }));
     // ---- Delete Category ----
     context.subscriptions.push(vscode.commands.registerCommand('quickPrompt.deleteCategory', async (item) => {
+        if (!checkEnabled())
+            return showDisabledWarning();
         const name = item?.category?.name;
         if (!name || name === '⭐  Favorites') {
             return;
@@ -189,6 +211,8 @@ function registerCommands(context, storage, treeProvider) {
     }));
     // ---- Rename Category ----
     context.subscriptions.push(vscode.commands.registerCommand('quickPrompt.renameCategory', async (item) => {
+        if (!checkEnabled())
+            return showDisabledWarning();
         const name = item?.category?.name;
         if (!name || name === '⭐  Favorites') {
             return;
@@ -207,6 +231,8 @@ function registerCommands(context, storage, treeProvider) {
     }));
     // ---- Search Prompts (Quick Pick) ----
     context.subscriptions.push(vscode.commands.registerCommand('quickPrompt.searchPrompts', async () => {
+        if (!checkEnabled())
+            return showDisabledWarning();
         const prompts = storage.getPrompts();
         const items = prompts.map((p) => ({
             label: `${p.isFavorite ? '⭐ ' : ''}${p.title}`,

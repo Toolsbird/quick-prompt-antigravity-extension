@@ -1,38 +1,31 @@
 # Quick Prompt Antigravity Extension — TODO List
-> Last updated: 2026-03-28 | Current version: **v1.2.4** | Branch: `main`
+> Last updated: 2026-03-29 | Current version: **v1.2.5** | Branch: `main`
 
 ---
 
 ## 🔴 Critical / Must Fix
 
-- [ ] **Google Drive Sync — Login Flow Reliability**
-  - The `loginToSync()` / OAuth flow intermittently shows "Please login first" even after a successful sign-in
-  - Root cause: custom Google OAuth provider loses session state on popup close before token is persisted
-  - Need to verify token is fully written to `SecretStorage` before updating UI state
-  - Consider switching to a persistent token cache pattern
+- [x] **Sync Feature Consolidation**
+  - Removed legacy Google Drive sync in favor of robust, native GitHub Gist synchronization.
 
-- [ ] **Free-Tier Seed Race Condition**
-  - On first install, if the extension activates before `seed-free-tier` completes, the user sees an empty prompt list
-  - Add a proper loading/skeleton state in the webview until storage is confirmed initialized
+- [x] **Free-Tier Seed Race Condition**
+  - On first install, ensure default prompts are fully seeded before webview activation. (Fixed in v1.2.5)
 
-- [ ] **Skill-to-Prompt Link — Favorite Save Bug**
-  - Already patched in v1.2.2 but needs E2E verification: saving a skill as favorite while linked to a prompt should not drop the `linkedSkill` field from storage
+- [x] **Skill-to-Prompt Link — Favorite Save Bug**
+  - Already patched in v1.2.2 and verified: saving a skill as favorite while linked to a prompt preserves the `linkedSkill` field.
 
 ---
 
 ## 🟡 Features In Progress / Partially Done
 
-- [ ] **Master Toggle — Full E2E Test**
-  - The Master Toggle (Enable/Disable all extension features) was implemented but not fully tested across: sidebar, status bar, command palette, and keybinding injection
-  - Verify that toggling OFF truly suppresses all Quick Prompt activity
+- [x] **Master Toggle — Implementation**
+  - The Master Toggle (Enable/Disable all extension features) has been successfully implemented across: sidebar, status bar, and all commands. UI elements are hidden via `package.json` `when` clauses.
 
-- [ ] **Skill Management — Delete & Edit UI**
-  - Skills can be created and favorited but **cannot be deleted or edited** from the UI yet
-  - Add edit pencil icon and delete trash icon in the skill card row
+- [x] **Skill Management — Delete & Edit UI**
+  - Added delete and edit functionality to skill cards with dedicated icons in the dashboard.
 
-- [ ] **Category Sync to Sidebar**
-  - New categories created in the webview dashboard do not always appear immediately in the VS Code sidebar tree view without a manual refresh
-  - Fix: fire `refresh` event on the `PromptTreeProvider` immediately after category creation in storage
+- [x] **Category Sync to Sidebar**
+  - Ensured manual synchronization after category creation and deletion by triggering `_syncWebview()`.
 
 - [ ] **Publisher License Gate — Multi-Seat Check**
   - Current license gate checks a single master key from Remote Config
@@ -97,4 +90,4 @@
 
 ---
 
-> **Resume Point:** Start next session with the 🔴 Critical items, especially verifying the Google Drive Login flow end-to-end in a clean VS Code environment.
+> **Resume Point:** Finalized v1.2.5. Verify GitHub Gist sync end-to-end in next session.

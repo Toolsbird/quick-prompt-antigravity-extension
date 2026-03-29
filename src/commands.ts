@@ -9,9 +9,18 @@ export function registerCommands(
   treeProvider: QuickPromptTreeProvider
 ): void {
 
+  function checkEnabled(): boolean {
+    return vscode.workspace.getConfiguration('quickPrompt').get<boolean>('enabled', true);
+  }
+
+  function showDisabledWarning() {
+    vscode.window.showWarningMessage('⚡ Quick Prompt is currently disabled. Re-enable it from the Dashboard to use this feature.');
+  }
+
   // ---- Use Prompt (inject to chat) ----
   context.subscriptions.push(
     vscode.commands.registerCommand('quickPrompt.usePrompt', async (item?: PromptTreeItem) => {
+      if (!checkEnabled()) return showDisabledWarning();
       if (item?.prompt) {
         await storage.incrementUseCount(item.prompt.id);
         await injectPrompt(item.prompt, storage);
@@ -22,6 +31,7 @@ export function registerCommands(
   // ---- Inject by ID (used by status bar) ----
   context.subscriptions.push(
     vscode.commands.registerCommand('quickPrompt.injectPromptById', async (id: string) => {
+      if (!checkEnabled()) return showDisabledWarning();
       const prompt = storage.getPrompts().find((p) => p.id === id);
       if (prompt) {
         await storage.incrementUseCount(id);
@@ -33,6 +43,7 @@ export function registerCommands(
   // ---- Add Prompt ----
   context.subscriptions.push(
     vscode.commands.registerCommand('quickPrompt.addPrompt', async () => {
+      if (!checkEnabled()) return showDisabledWarning();
       const title = await vscode.window.showInputBox({
         title: 'New Prompt — Title',
         prompt: 'Enter a name for your prompt',
@@ -83,6 +94,7 @@ export function registerCommands(
   // ---- Edit Prompt ----
   context.subscriptions.push(
     vscode.commands.registerCommand('quickPrompt.editPrompt', async (item?: PromptTreeItem) => {
+      if (!checkEnabled()) return showDisabledWarning();
       let prompt = item?.prompt;
       if (!prompt) {
         const prompts = storage.getPrompts();
@@ -118,6 +130,7 @@ export function registerCommands(
   // ---- Delete Prompt ----
   context.subscriptions.push(
     vscode.commands.registerCommand('quickPrompt.deletePrompt', async (item?: PromptTreeItem) => {
+      if (!checkEnabled()) return showDisabledWarning();
       const prompt = item?.prompt;
       if (!prompt) { return; }
 
@@ -137,6 +150,7 @@ export function registerCommands(
   // ---- Toggle Favorite ----
   context.subscriptions.push(
     vscode.commands.registerCommand('quickPrompt.toggleFavorite', async (item?: PromptTreeItem) => {
+      if (!checkEnabled()) return showDisabledWarning();
       if (!item?.prompt) { return; }
       const isFav = await storage.toggleFavorite(item.prompt.id);
       treeProvider.refresh();
@@ -151,6 +165,7 @@ export function registerCommands(
   // ---- Add Category ----
   context.subscriptions.push(
     vscode.commands.registerCommand('quickPrompt.addCategory', async () => {
+      if (!checkEnabled()) return showDisabledWarning();
       const name = await vscode.window.showInputBox({
         title: 'New Category',
         prompt: 'Enter a name for the new category',
@@ -171,6 +186,7 @@ export function registerCommands(
   // ---- Delete Category ----
   context.subscriptions.push(
     vscode.commands.registerCommand('quickPrompt.deleteCategory', async (item?: CategoryTreeItem) => {
+      if (!checkEnabled()) return showDisabledWarning();
       const name = item?.category?.name;
       if (!name || name === '⭐  Favorites') { return; }
 
@@ -190,6 +206,7 @@ export function registerCommands(
   // ---- Rename Category ----
   context.subscriptions.push(
     vscode.commands.registerCommand('quickPrompt.renameCategory', async (item?: CategoryTreeItem) => {
+      if (!checkEnabled()) return showDisabledWarning();
       const name = item?.category?.name;
       if (!name || name === '⭐  Favorites') { return; }
 
@@ -208,6 +225,7 @@ export function registerCommands(
   // ---- Search Prompts (Quick Pick) ----
   context.subscriptions.push(
     vscode.commands.registerCommand('quickPrompt.searchPrompts', async () => {
+      if (!checkEnabled()) return showDisabledWarning();
       const prompts = storage.getPrompts();
       const items = prompts.map((p) => ({
         label: `${p.isFavorite ? '⭐ ' : ''}${p.title}`,

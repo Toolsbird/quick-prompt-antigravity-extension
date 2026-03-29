@@ -116,6 +116,7 @@ class WebviewManager {
                 try {
                     await this._storage.addCategory(name);
                     this._panel?.webview.postMessage({ type: 'success', msg: 'Category created!' });
+                    this._syncWebview();
                 }
                 catch (e) {
                     this._panel?.webview.postMessage({ type: 'error', msg: e.message });
@@ -163,6 +164,7 @@ class WebviewManager {
             case 'deleteCategory': {
                 const { name } = message;
                 await this._storage.deleteCategory(name);
+                this._syncWebview();
                 break;
             }
             case 'toggleExtensionState': {
