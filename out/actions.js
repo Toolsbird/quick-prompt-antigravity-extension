@@ -49,6 +49,7 @@ async function injectPrompt(prompt, storage) {
             content = `[SYSTEM SKILL: ${skill.name}]\n${skill.content}\n\n[USER TASK]\n${prompt.content}`;
         }
     }
+    // 2. Variable replacement (if editor available)
     const editor = vscode.window.activeTextEditor;
     let resolvedContent = content;
     if (editor) {
@@ -61,44 +62,66 @@ async function injectPrompt(prompt, storage) {
             .replace(/\\{\\{file\\}\\}/g, fileName)
             .replace(/\\{\\{language\\}\\}/g, language);
     }
-    // Copy to clipboard
-    await vscode.env.clipboard.writeText(resolvedContent);
-    // Try to open chat panel (various potential commands depending on environment)
-    const chatCommands = [
-        'antigravity.agent.open', // Primary Antigravity
-        'antigravity.chat.open', // Antigravity Alternative
-        'cursor.chat.open', // Cursor Compatibility
-        'workbench.action.chat.open', // Built-in VS Code Chat
-        'inlineChat.start', // Inline AI
-    ];
-    let chatOpened = false;
-    for (const cmd of chatCommands) {
+    // --- NEW: DIRECT INJECTION (Prefer Antigravity API) ---
+    const tryDirectInjections = async () => {
+        // 1. Primary: Antigravity "sendTextToChat" (Immediate execution)
         try {
-            await vscode.commands.executeCommand(cmd);
-            chatOpened = true;
-            break;
+            // @ts-ignore
+            await vscode.commands.executeCommand('antigravity.sendTextToChat', {
+                text: resolvedContent,
+                mode: 'planning' // As requested, defaulting to planning mode
+            });
+            return true;
         }
-        catch {
-            continue;
+        catch { /* skip */ }
+        // 2. Secondary: Workbench "chat.open" (Populate UI with query)
+        try {
+            await vscode.commands.executeCommand('workbench.action.chat.open', {
+                query: resolvedContent
+            });
+            return true;
         }
-    }
-    // Wait for panel to focus and trigger paste
-    if (chatOpened) {
-        const pasteSequence = async (ms) => {
-            await new Promise(r => setTimeout(r, ms));
+        catch { /* skip */ }
+        return false;
+    };
+    const directInjected = await tryDirectInjections();
+    if (!directInjected) {
+        // Fallback: Clipboard & Focused Paste (Original Method)
+        await vscode.env.clipboard.writeText(resolvedContent);
+        const chatCommands = [
+            'antigravity.agent.open',
+            'antigravity.chat.open',
+            'cursor.chat.open',
+            'workbench.action.chat.open',
+            'inlineChat.start',
+        ];
+        let chatOpened = false;
+        for (const cmd of chatCommands) {
             try {
-                await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-                return true;
+                await vscode.commands.executeCommand(cmd);
+                chatOpened = true;
+                break;
             }
             catch {
-                return false;
+                continue;
             }
-        };
-        // Retry once if paste fails (sometimes UI focus takes a split second)
-        const firstTry = await pasteSequence(350);
-        if (!firstTry) {
-            await pasteSequence(500);
+        }
+        if (chatOpened) {
+            const pasteSequence = async (ms) => {
+                await new Promise(r => setTimeout(r, ms));
+                try {
+                    await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+                    return true;
+                }
+                catch {
+                    return false;
+                }
+            };
+            await pasteSequence(350);
+            vscode.window.setStatusBarMessage(`⚡ Prompt prepared! (Cmd+V if needed)`, 5000);
         }
     }
-    vscode.window.setStatusBarMessage(`⚡ Prompt prepared! (Cmd+V if needed)`, 5000);
+    else {
+        vscode.window.setStatusBarMessage(`🚀 Prompt sent directly to AI!`, 3000);
+    }
 }

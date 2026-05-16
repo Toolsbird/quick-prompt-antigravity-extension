@@ -142,6 +142,9 @@ class StorageService {
             }
         }
     }
+    getContext() {
+        return this._context;
+    }
     async _seedIfEmpty() {
         const store = this._context.globalState.get(STORE_KEY);
         if (!store || (store.prompts.length === 0 && (!store.skills || store.skills.length === 0))) {
@@ -364,6 +367,102 @@ class StorageService {
             return skill.isFavorite;
         }
         return false;
+    }
+    // --- Export ---
+    getExportData() {
+        const store = this._getStore();
+        return {
+            exportedAt: new Date().toISOString(),
+            extensionVersion: '1.2.5',
+            categories: store.categories,
+            prompts: store.prompts,
+            skills: store.skills || [],
+        };
+    }
+    async importData(data) {
+        const store = this._getStore();
+        let importedPrompts = 0;
+        let importedSkills = 0;
+        let importedCategories = 0;
+        // 1. Import categories first
+        if (data.categories) {
+            for (const cat of data.categories) {
+                if (!cat.name)
+                    continue;
+                const exists = store.categories.find(c => c.name.toLowerCase() === cat.name.toLowerCase());
+                if (!exists) {
+                    store.categories.push({
+                        id: cat.id || `cat-import-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                        name: cat.name,
+                        createdAt: cat.createdAt || Date.now(),
+                    });
+                    importedCategories++;
+                }
+            }
+        }
+        // 2. Import prompts
+        if (data.prompts) {
+            for (const p of data.prompts) {
+                if (!p.title || !p.content)
+                    continue;
+                // Skip if same ID already exists
+                if (p.id && store.prompts.find(ep => ep.id === p.id))
+                    continue;
+                // Skip if exact same title+content combo exists
+                if (store.prompts.find(ep => ep.title === p.title && ep.content === p.content))
+                    continue;
+                // Respect free-tier limit
+                if (!store.isPro && store.prompts.length >= 10)
+                    break;
+                // Ensure category exists
+                const catName = p.category || 'Imported';
+                if (!store.categories.find(c => c.name === catName)) {
+                    store.categories.push({
+                        id: `cat-import-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                        name: catName,
+                        createdAt: Date.now(),
+                    });
+                    importedCategories++;
+                }
+                store.prompts.push({
+                    id: p.id || `prompt-import-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+                    title: p.title,
+                    content: p.content,
+                    category: catName,
+                    isFavorite: p.isFavorite || false,
+                    createdAt: p.createdAt || Date.now(),
+                    updatedAt: p.updatedAt || Date.now(),
+                    useCount: p.useCount || 0,
+                    skillId: p.skillId,
+                    tags: p.tags || [],
+                });
+                importedPrompts++;
+            }
+        }
+        // 3. Import skills
+        if (data.skills) {
+            if (!store.skills)
+                store.skills = [];
+            for (const s of data.skills) {
+                if (!s.name || !s.content)
+                    continue;
+                if (s.id && store.skills.find(es => es.id === s.id))
+                    continue;
+                if (store.skills.find(es => es.name === s.name && es.content === s.content))
+                    continue;
+                store.skills.push({
+                    id: s.id || `skill-import-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                    name: s.name,
+                    content: s.content,
+                    createdAt: s.createdAt || Date.now(),
+                    updatedAt: s.updatedAt || Date.now(),
+                    isFavorite: s.isFavorite || false,
+                });
+                importedSkills++;
+            }
+        }
+        await this._saveStore(store);
+        return { prompts: importedPrompts, skills: importedSkills, categories: importedCategories };
     }
     /**
      * Checks if the user is already signed into GitHub without prompting.

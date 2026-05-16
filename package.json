@@ -2,7 +2,7 @@
   "name": "quick-prompt-antigravity",
   "displayName": "Quick Prompt — Antigravity",
   "description": "Save, organize, and instantly inject AI prompts into Antigravity/VS Code chat. Access favorites from the status bar in one click.",
-  "version": "1.2.5",
+  "version": "1.2.7",
   "publisher": "Toolsbird",
   "repository": {
     "type": "git",
@@ -43,9 +43,18 @@
         {
           "id": "quickPromptExplorer",
           "name": "My Prompts",
+          "dragAndDrop": true,
           "icon": "resources/sidebar-icon.svg",
           "contextualTitle": "Quick Prompts",
           "when": "config.quickPrompt.enabled"
+        }
+      ],
+      "panel": [
+        {
+          "id": "quickPromptFavoritesPanel",
+          "name": "Favorite Prompts — Horizontal Bar",
+          "type": "webview",
+          "icon": "$(star)"
         }
       ]
     },

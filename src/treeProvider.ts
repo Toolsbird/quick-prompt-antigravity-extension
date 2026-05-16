@@ -50,12 +50,16 @@ export type QuickPromptTreeItem = CategoryTreeItem | PromptTreeItem;
 // ---- Tree Data Provider -----
 
 export class QuickPromptTreeProvider
-  implements vscode.TreeDataProvider<QuickPromptTreeItem>
+  implements vscode.TreeDataProvider<QuickPromptTreeItem>, vscode.TreeDragAndDropController<QuickPromptTreeItem>
 {
   private _onDidChangeTreeData = new vscode.EventEmitter<
     QuickPromptTreeItem | undefined | null
   >();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+
+  // --- Drag and Drop Configuration ---
+  dropMimeTypes = ['application/vnd.code.tree.quickPromptExplorer', 'text/plain', 'text/markdown', 'text/html'];
+  dragMimeTypes = ['application/vnd.code.tree.quickPromptExplorer', 'text/plain', 'text/markdown', 'text/html'];
 
   constructor(private readonly storage: StorageService) {
     storage.onDidChange(() => this.refresh());
@@ -64,6 +68,26 @@ export class QuickPromptTreeProvider
         this.refresh();
       }
     });
+  }
+
+  handleDrag(source: readonly QuickPromptTreeItem[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): void | Thenable<void> {
+    const item = source[0];
+    if (item instanceof PromptTreeItem) {
+      const content = item.prompt.content;
+      
+      // 1. Internal MIME (for reordering if needed)
+      dataTransfer.set('application/vnd.code.tree.quickPromptExplorer', new vscode.DataTransferItem(item.prompt));
+      
+      // 2. Multi-Format drop support (Better compatibility for AI Webviews)
+      dataTransfer.set('text/plain', new vscode.DataTransferItem(content));
+      dataTransfer.set('text/markdown', new vscode.DataTransferItem(content));
+      dataTransfer.set('text/html', new vscode.DataTransferItem(`<p>${content}</p>`));
+    }
+  }
+
+  // We don't necessarily need handleDrop yet as we are primarily dragging TO other views
+  handleDrop(target: QuickPromptTreeItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): void | Thenable<void> {
+    /* Potential future: Reordering via drop on categories */
   }
 
   refresh(): void {

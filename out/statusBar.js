@@ -35,7 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StatusBarManager = void 0;
 const vscode = __importStar(require("vscode"));
-const MAX_STATUS_BAR_ITEMS = 5;
+// No artificial limit — all favorites are shown in the status bar
 class StatusBarManager {
     constructor(storage) {
         this._items = [];
@@ -70,12 +70,13 @@ class StatusBarManager {
             this._items.push(placeholder);
             return;
         }
-        // Show up to MAX_STATUS_BAR_ITEMS favorite prompts
-        favorites.slice(0, MAX_STATUS_BAR_ITEMS).forEach((prompt, idx) => {
+        // Show ALL favorite prompts in the status bar (no cap)
+        favorites.forEach((prompt, idx) => {
             const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -(100 + idx));
-            // Truncate title for status bar
-            const label = prompt.title.length > 20
-                ? prompt.title.substring(0, 20) + '…'
+            // Shrink label based on how many favorites exist for density
+            const maxLen = favorites.length > 8 ? 12 : favorites.length > 5 ? 16 : 20;
+            const label = prompt.title.length > maxLen
+                ? prompt.title.substring(0, maxLen) + '…'
                 : prompt.title;
             item.text = `$(zap) ${label}`;
             item.tooltip = new vscode.MarkdownString(`**Quick Prompt:** ${prompt.title}\n\n---\n\`\`\`\n${prompt.content.substring(0, 200)}${prompt.content.length > 200 ? '…' : ''}\n\`\`\`\n\n_Click to inject into AI Chat_`);
@@ -87,15 +88,6 @@ class StatusBarManager {
             item.show();
             this._items.push(item);
         });
-        // "More" button if there are more than MAX
-        if (favorites.length > MAX_STATUS_BAR_ITEMS) {
-            const more = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -(100 + MAX_STATUS_BAR_ITEMS));
-            more.text = `$(ellipsis) +${favorites.length - MAX_STATUS_BAR_ITEMS}`;
-            more.tooltip = 'More favorite prompts — click to search all';
-            more.command = 'quickPrompt.searchPrompts';
-            more.show();
-            this._items.push(more);
-        }
     }
     dispose() {
         this._items.forEach((i) => i.dispose());

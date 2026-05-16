@@ -41,6 +41,7 @@ const treeProvider_1 = require("./treeProvider");
 const statusBar_1 = require("./statusBar");
 const webview_1 = require("./webview");
 const commands_1 = require("./commands");
+const favoritesBarProvider_1 = require("./favoritesBarProvider");
 function activate(context) {
     console.log('[Quick Prompt] Extension activated');
     // 1. Storage
@@ -49,6 +50,7 @@ function activate(context) {
     const treeProvider = new treeProvider_1.QuickPromptTreeProvider(storage);
     const treeView = vscode.window.createTreeView('quickPromptExplorer', {
         treeDataProvider: treeProvider,
+        dragAndDropController: treeProvider,
         showCollapseAll: true,
         canSelectMany: false,
     });
@@ -56,6 +58,9 @@ function activate(context) {
     const statusBarManager = new statusBar_1.StatusBarManager(storage);
     // 4. Webview Manager
     const webviewManager = new webview_1.WebviewManager(storage);
+    // 4b. Favorites Panel (Bottom Bar)
+    const favoritesBarProvider = new favoritesBarProvider_1.FavoritesBarProvider(storage);
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider(favoritesBarProvider_1.FavoritesBarProvider.viewType, favoritesBarProvider));
     // Register the open webview command
     context.subscriptions.push(vscode.commands.registerCommand('quickPrompt.openWebview', () => {
         webviewManager.openOrReveal();

@@ -104,6 +104,7 @@ class WebviewManager {
             case 'deletePrompt': {
                 const { id } = message;
                 await this._storage.deletePrompt(id);
+                this._syncWebview();
                 break;
             }
             case 'toggleFavorite': {
@@ -215,6 +216,98 @@ class WebviewManager {
                 }
                 break;
             }
+            case 'exportPrompts': {
+                const data = this._storage.getExportData();
+                const json = JSON.stringify(data, null, 2);
+                const date = new Date().toISOString().slice(0, 10);
+                const defaultUri = vscode.Uri.file(`quick-prompt-backup-${date}.json`);
+                const uri = await vscode.window.showSaveDialog({
+                    defaultUri,
+                    filters: { 'JSON Files': ['json'] },
+                    title: 'Export All Prompts',
+                });
+                if (uri) {
+                    await vscode.workspace.fs.writeFile(uri, Buffer.from(json, 'utf-8'));
+                    this._panel?.webview.postMessage({ type: 'success', msg: `✅ Exported successfully to ${uri.fsPath}` });
+                }
+                break;
+            }
+            case 'importPrompts': {
+                const fileUris = await vscode.window.showOpenDialog({
+                    canSelectFiles: true,
+                    canSelectFolders: false,
+                    canSelectMany: false,
+                    filters: { 'Prompt Files': ['json', 'csv'] },
+                    title: 'Import Prompts (JSON or CSV)',
+                });
+                if (!fileUris || fileUris.length === 0)
+                    break;
+                const fileUri = fileUris[0];
+                const rawBytes = await vscode.workspace.fs.readFile(fileUri);
+                const rawContent = Buffer.from(rawBytes).toString('utf-8');
+                const ext = fileUri.fsPath.split('.').pop()?.toLowerCase();
+                try {
+                    let importPayload = {};
+                    if (ext === 'json') {
+                        const parsed = JSON.parse(rawContent);
+                        importPayload = {
+                            prompts: parsed.prompts || [],
+                            categories: parsed.categories || [],
+                            skills: parsed.skills || [],
+                        };
+                    }
+                    else if (ext === 'csv') {
+                        const lines = rawContent.split('\n').map(l => l.trim()).filter(l => l);
+                        if (lines.length < 2)
+                            throw new Error('CSV file is empty or has no data rows.');
+                        const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+                        const titleIdx = headers.indexOf('title');
+                        const contentIdx = headers.indexOf('content');
+                        const categoryIdx = headers.indexOf('category');
+                        const favoriteIdx = headers.indexOf('isfavorite');
+                        if (titleIdx === -1 || contentIdx === -1) {
+                            throw new Error('CSV must have "title" and "content" columns in the header row.');
+                        }
+                        const prompts = [];
+                        for (let i = 1; i < lines.length; i++) {
+                            const cols = parseCSVLine(lines[i]);
+                            const title = cols[titleIdx]?.trim();
+                            const content = cols[contentIdx]?.trim();
+                            if (!title || !content)
+                                continue;
+                            prompts.push({
+                                title,
+                                content,
+                                category: categoryIdx !== -1 ? (cols[categoryIdx]?.trim() || 'Imported') : 'Imported',
+                                isFavorite: favoriteIdx !== -1 ? cols[favoriteIdx]?.trim().toLowerCase() === 'true' : false,
+                            });
+                        }
+                        importPayload = { prompts, categories: [], skills: [] };
+                    }
+                    else {
+                        throw new Error('Unsupported file format. Please use .json or .csv');
+                    }
+                    const result = await this._storage.importData(importPayload);
+                    const parts = [];
+                    if (result.prompts > 0)
+                        parts.push(`${result.prompts} prompt(s)`);
+                    if (result.skills > 0)
+                        parts.push(`${result.skills} skill(s)`);
+                    if (result.categories > 0)
+                        parts.push(`${result.categories} new category/ies`);
+                    if (parts.length > 0) {
+                        this._panel?.webview.postMessage({ type: 'success', msg: `✅ Imported ${parts.join(', ')}!` });
+                    }
+                    else {
+                        this._panel?.webview.postMessage({ type: 'success', msg: 'ℹ️ No new items found — all already exist in your library.' });
+                    }
+                    this._syncWebview();
+                }
+                catch (e) {
+                    this._panel?.webview.postMessage({ type: 'error', msg: `Import failed: ${e.message}` });
+                }
+                break;
+            }
         }
     }
     _getHtml() {
@@ -234,3 +327,30 @@ class WebviewManager {
     }
 }
 exports.WebviewManager = WebviewManager;
+/** Parses a single CSV line, respecting quoted fields with commas and escaped quotes. */
+function parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+            if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
+                current += '"';
+                i++;
+            }
+            else {
+                inQuotes = !inQuotes;
+            }
+        }
+        else if (char === ',' && !inQuotes) {
+            result.push(current);
+            current = '';
+        }
+        else {
+            current += char;
+        }
+    }
+    result.push(current);
+    return result;
+}

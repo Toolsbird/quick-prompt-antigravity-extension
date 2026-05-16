@@ -72,12 +72,31 @@ class QuickPromptTreeProvider {
         this.storage = storage;
         this._onDidChangeTreeData = new vscode.EventEmitter();
         this.onDidChangeTreeData = this._onDidChangeTreeData.event;
+        // --- Drag and Drop Configuration ---
+        this.dropMimeTypes = ['application/vnd.code.tree.quickPromptExplorer', 'text/plain', 'text/markdown', 'text/html'];
+        this.dragMimeTypes = ['application/vnd.code.tree.quickPromptExplorer', 'text/plain', 'text/markdown', 'text/html'];
         storage.onDidChange(() => this.refresh());
         vscode.workspace.onDidChangeConfiguration((e) => {
             if (e.affectsConfiguration('quickPrompt.enabled')) {
                 this.refresh();
             }
         });
+    }
+    handleDrag(source, dataTransfer, token) {
+        const item = source[0];
+        if (item instanceof PromptTreeItem) {
+            const content = item.prompt.content;
+            // 1. Internal MIME (for reordering if needed)
+            dataTransfer.set('application/vnd.code.tree.quickPromptExplorer', new vscode.DataTransferItem(item.prompt));
+            // 2. Multi-Format drop support (Better compatibility for AI Webviews)
+            dataTransfer.set('text/plain', new vscode.DataTransferItem(content));
+            dataTransfer.set('text/markdown', new vscode.DataTransferItem(content));
+            dataTransfer.set('text/html', new vscode.DataTransferItem(`<p>${content}</p>`));
+        }
+    }
+    // We don't necessarily need handleDrop yet as we are primarily dragging TO other views
+    handleDrop(target, dataTransfer, token) {
+        /* Potential future: Reordering via drop on categories */
     }
     refresh() {
         this._onDidChangeTreeData.fire(null);

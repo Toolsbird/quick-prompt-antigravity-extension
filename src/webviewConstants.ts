@@ -205,7 +205,7 @@ export const WEBVIEW_STYLES = `
     box-shadow: 0 2px 8px rgba(0,0,0,0.12);
   }
   .btn-sync:hover { filter: brightness(0.95); border-color: rgba(255,255,255,0.5); }
-  .btn-sync.synced { background: rgba(16,185,129,0.12); border-color: var(--green); color: var(--green); }
+  .btn-sync.synced { background: #ffffff; border-color: var(--green); color: var(--green); box-shadow: 0 2px 8px rgba(16,185,129,0.2); }
   .btn-sm { padding: 5px 10px; font-size: 12px; }
   .btn-icon { padding: 6px; border-radius: 8px; }
 
@@ -342,8 +342,10 @@ export const WEBVIEW_STYLES = `
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 28px;
+    padding: 20px;
     width: 100%; max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
     box-shadow: var(--shadow);
     transform: translateY(16px);
     transition: transform 0.2s;
@@ -351,11 +353,11 @@ export const WEBVIEW_STYLES = `
   .modal-overlay.open .modal { transform: translateY(0); }
 
   .modal-title {
-    font-size: 18px; font-weight: 700; margin-bottom: 20px;
+    font-size: 18px; font-weight: 700; margin-bottom: 12px;
     display: flex; align-items: center; gap: 10px;
   }
 
-  .form-group { margin-bottom: 16px; }
+  .form-group { margin-bottom: 10px; }
   .form-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
   .form-input, .form-select, .form-textarea {
     width: 100%;
@@ -370,7 +372,7 @@ export const WEBVIEW_STYLES = `
     font-family: inherit;
   }
   .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
-  .form-textarea { resize: vertical; min-height: 120px; font-family: 'SF Mono', 'Consolas', monospace; font-size: 13px; line-height: 1.7; }
+  .form-textarea { resize: vertical; min-height: 200px; font-family: 'SF Mono', 'Consolas', monospace; font-size: 13px; line-height: 1.7; }
   .form-select option { background: var(--surface); }
 
   .form-row { display: flex; gap: 12px; align-items: flex-end; }
@@ -387,7 +389,7 @@ export const WEBVIEW_STYLES = `
   .checkbox-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--gold); cursor: pointer; }
   .checkbox-row label { cursor: pointer; font-size: 14px; }
 
-  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
 
   /* ===== TOAST ===== */
   #toast {
@@ -545,6 +547,8 @@ export const WEBVIEW_HTML = `
         <span id="headerSyncIcon">🔐</span> <span id="headerSyncText">Login to Sync</span>
       </button>
       <button id="upgradeBtn" class="btn btn-upgrade" onclick="openPremiumModal()" style="display:none;">🚀 Upgrade to Pro</button>
+      <button class="btn btn-sync" onclick="importPrompts()" title="Import prompts from JSON or CSV file">📤 Import</button>
+      <button class="btn btn-sync" onclick="exportPrompts()" title="Download all prompts as a JSON file">📥 Export</button>
       <button class="btn btn-primary" style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 6px 20px rgba(16,185,129,0.3);" onclick="openAddSkillModal()">🧠 New Skill</button>
       <button class="btn btn-primary" onclick="openAddModal()">＋ New Prompt</button>
     </div>
@@ -705,6 +709,28 @@ export const WEBVIEW_HTML = `
 
 <!-- TOAST -->
 <div id="toast"></div>
+
+<!-- DELETE CONFIRMATION MODAL -->
+<div class="modal-overlay" id="deleteModal" onclick="closeDeleteModalOnBackdrop(event)">
+  <div class="modal" style="max-width: 420px;">
+    <div class="modal-title" style="color: var(--red);">🗑️ <span id="deleteModalTitle">Delete Prompt?</span></div>
+    <p id="deleteModalMsg" style="font-size: 14px; color: var(--text2); line-height: 1.6; margin-bottom: 12px;"></p>
+    <div id="deleteStep1">
+      <p style="font-size: 13px; color: var(--text3); margin-bottom: 8px;">This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeDeleteModal()">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmDeleteStep2()" style="background: rgba(239,68,68,0.15); font-weight: 700;">⚠️ Yes, Delete</button>
+      </div>
+    </div>
+    <div id="deleteStep2" style="display: none;">
+      <p style="font-size: 13px; color: var(--red); font-weight: 600; margin-bottom: 8px;">⚠️ Final confirmation — are you absolutely sure?</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeDeleteModal()">Cancel</button>
+        <button class="btn" style="background: var(--red); color: white; font-weight: 700;" onclick="executeDelete()">🗑️ Permanently Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
 `;
 
 /* =============================================================================
@@ -981,19 +1007,42 @@ export const WEBVIEW_JS = `
     vscode.postMessage({ type: 'toggleSkillFavorite', id });
   }
 
+  let pendingDeleteId = null;
+  let pendingDeleteType = null;
+
   function deletePrompt(id) {
-    if (confirm('Delete this prompt?')) {
-      vscode.postMessage({ type: 'deletePrompt', id });
-    }
+    const p = allPrompts.find(p => p.id === id);
+    pendingDeleteId = id;
+    pendingDeleteType = 'prompt';
+    document.getElementById('deleteModalTitle').textContent = 'Delete Prompt?';
+    document.getElementById('deleteModalMsg').textContent = 'You are about to delete "' + (p ? p.title : 'this prompt') + '".';
+    document.getElementById('deleteStep1').style.display = 'block';
+    document.getElementById('deleteStep2').style.display = 'none';
+    document.getElementById('deleteModal').classList.add('open');
   }
 
-  function addCategoryFromInput() {
-    const input = document.getElementById('newCatInput');
-    const name = input.value.trim();
-    if (name) {
-      vscode.postMessage({ type: 'addCategory', name });
-      input.value = '';
+  function confirmDeleteStep2() {
+    document.getElementById('deleteStep1').style.display = 'none';
+    document.getElementById('deleteStep2').style.display = 'block';
+  }
+
+  function executeDelete() {
+    if (pendingDeleteType === 'prompt') {
+      vscode.postMessage({ type: 'deletePrompt', id: pendingDeleteId });
+    } else if (pendingDeleteType === 'skill') {
+      vscode.postMessage({ type: 'deleteSkill', id: pendingDeleteId });
     }
+    closeDeleteModal();
+  }
+
+  function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.remove('open');
+    pendingDeleteId = null;
+    pendingDeleteType = null;
+  }
+
+  function closeDeleteModalOnBackdrop(e) {
+    if (e.target === document.getElementById('deleteModal')) closeDeleteModal();
   }
 
   function populateCategorySelect() {
@@ -1097,9 +1146,14 @@ export const WEBVIEW_JS = `
   }
 
   function deleteSkill(id) {
-    if (confirm('Delete this skill? Prompts linked to it will lead to no context injection.')) {
-      vscode.postMessage({ type: 'deleteSkill', id });
-    }
+    const s = allSkills.find(s => s.id === id);
+    pendingDeleteId = id;
+    pendingDeleteType = 'skill';
+    document.getElementById('deleteModalTitle').textContent = 'Delete Skill?';
+    document.getElementById('deleteModalMsg').textContent = 'You are about to delete "' + (s ? s.name : 'this skill') + '". Prompts linked to it will lose their skill context.';
+    document.getElementById('deleteStep1').style.display = 'block';
+    document.getElementById('deleteStep2').style.display = 'none';
+    document.getElementById('deleteModal').classList.add('open');
   }
 
   function closeSkillModal() {
@@ -1134,6 +1188,23 @@ export const WEBVIEW_JS = `
     area.value = text.substring(0, start) + v + text.substring(end);
     area.focus();
     area.selectionStart = area.selectionEnd = start + v.length;
+  }
+
+  function addCategoryFromInput() {
+    const input = document.getElementById('newCatInput');
+    const name = input.value.trim();
+    if (name) {
+      vscode.postMessage({ type: 'addCategory', name });
+      input.value = '';
+    }
+  }
+
+  function exportPrompts() {
+    vscode.postMessage({ type: 'exportPrompts' });
+  }
+
+  function importPrompts() {
+    vscode.postMessage({ type: 'importPrompts' });
   }
 
 `;
