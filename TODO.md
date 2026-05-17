@@ -14,6 +14,10 @@
 - [x] **Skill-to-Prompt Link — Favorite Save Bug**
   - Already patched in v1.2.2 and verified: saving a skill as favorite while linked to a prompt preserves the `linkedSkill` field.
 
+- [ ] **Prompt Auto-Inject Fails (Clipboard Fallback Triggers)**
+  - Auto-injecting a prompt directly into the Antigravity/Cursor chat input box is failing. It falls back to copying to the clipboard and requires manual paste (Cmd+V).
+  - Diagnostic file logging (`~/quick-prompt-inject-debug.log`) added in v1.2.7. Next session: analyze the logs to find the correct `vscode.commands.executeCommand` arguments to pre-fill the chat input natively.
+
 ---
 
 ## 🟡 Features In Progress / Partially Done
@@ -47,8 +51,8 @@
 - [ ] **Drag-and-Drop Reordering**
   - Allow users to reorder prompts within a category via drag-and-drop in the webview
 
-- [ ] **Import / Export Prompts**
-  - Allow users to export all prompts + categories as a `.json` file and re-import them (backup + cross-device without Drive)
+- [x] **Import / Export Prompts**
+  - Implemented in v1.2.6/1.2.7. Users can export all prompts + categories as `.json` and re-import from `.json` or `.csv`.
 
 - [ ] **Keyboard Shortcut Customization**
   - Let users configure which keybinding triggers the Quick Prompt picker from VS Code settings
@@ -90,4 +94,4 @@
 
 ---
 
-> **Resume Point:** Finalized v1.2.5. Verify GitHub Gist sync end-to-end in next session.
+> **Resume Point:** Check `~/quick-prompt-inject-debug.log` to diagnose why direct `executeCommand` injections are failing in the Antigravity chat, and fix the auto-populate logic.

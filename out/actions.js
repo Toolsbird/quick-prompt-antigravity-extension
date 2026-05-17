@@ -35,6 +35,10 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.injectPrompt = injectPrompt;
 const vscode = __importStar(require("vscode"));
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
+// Debug log file path
+const LOG_FILE = path.join(require('os').homedir(), 'quick-prompt-inject-debug.log');
 /**
  * Shared action to inject a prompt into the AI Chat panel with full context.
  * This handles Standalone Skill prepending, variable replacement, and the injection sequence.
@@ -62,66 +66,106 @@ async function injectPrompt(prompt, storage) {
             .replace(/\\{\\{file\\}\\}/g, fileName)
             .replace(/\\{\\{language\\}\\}/g, language);
     }
-    // --- NEW: DIRECT INJECTION (Prefer Antigravity API) ---
-    const tryDirectInjections = async () => {
-        // 1. Primary: Antigravity "sendTextToChat" (Immediate execution)
+    // --- DIRECT INJECTION PIPELINE (with file-based diagnostic logging) ---
+    const logLines = [];
+    const log = (msg) => { const line = `[${new Date().toISOString()}] ${msg}`; logLines.push(line); console.log(`[QuickPrompt] ${msg}`); };
+    log(`Starting injection for prompt: "${prompt.title}"`);
+    log(`Resolved content length: ${resolvedContent.length} chars`);
+    // Always put content on clipboard as a safety net
+    await vscode.env.clipboard.writeText(resolvedContent);
+    log('Content copied to clipboard as fallback.');
+    // 1. Discover which commands are actually registered in this IDE
+    const allCommands = await vscode.commands.getCommands(true);
+    log(`Total registered commands: ${allCommands.length}`);
+    // 2. Define our injection strategies in priority order
+    const strategies = [
+        // Antigravity-specific commands
+        { cmd: 'antigravity.sendTextToChat', args: { text: resolvedContent, mode: 'planning' }, label: 'Antigravity sendTextToChat (planning)' },
+        { cmd: 'antigravity.sendTextToChat', args: { text: resolvedContent }, label: 'Antigravity sendTextToChat (text only)' },
+        { cmd: 'antigravity.sendTextToChat', args: resolvedContent, label: 'Antigravity sendTextToChat (raw string)' },
+        // VS Code native chat with query parameter
+        { cmd: 'workbench.action.chat.open', args: { query: resolvedContent, isPartialQuery: true }, label: 'VS Code chat.open (partial query)' },
+        { cmd: 'workbench.action.chat.open', args: { query: resolvedContent, isPartialQuery: false }, label: 'VS Code chat.open (full query)' },
+        { cmd: 'workbench.action.chat.open', args: { query: resolvedContent }, label: 'VS Code chat.open (query only)' },
+        // Cursor-specific
+        { cmd: 'cursor.chat.open', args: { query: resolvedContent }, label: 'Cursor chat.open' },
+        // Copilot-specific
+        { cmd: 'workbench.panel.chat.view.copilot.focus', args: { query: resolvedContent }, label: 'Copilot focus + query' },
+    ];
+    // Filter to only strategies whose commands actually exist
+    const availableStrategies = strategies.filter(s => allCommands.includes(s.cmd));
+    log(`Available chat commands: ${[...new Set(availableStrategies.map(s => s.cmd))].join(', ') || 'NONE'}`);
+    // Log commands that were NOT found (useful for debugging)
+    const missingCmds = [...new Set(strategies.map(s => s.cmd))].filter(c => !allCommands.includes(c));
+    if (missingCmds.length > 0) {
+        log(`Commands NOT available in this IDE: ${missingCmds.join(', ')}`);
+    }
+    // 3. Try each available strategy
+    let injected = false;
+    for (const strategy of availableStrategies) {
         try {
-            // @ts-ignore
-            await vscode.commands.executeCommand('antigravity.sendTextToChat', {
-                text: resolvedContent,
-                mode: 'planning' // As requested, defaulting to planning mode
-            });
-            return true;
+            log(`Trying: ${strategy.label}...`);
+            await vscode.commands.executeCommand(strategy.cmd, strategy.args);
+            log(`✅ SUCCESS: ${strategy.label}`);
+            injected = true;
+            break;
         }
-        catch { /* skip */ }
-        // 2. Secondary: Workbench "chat.open" (Populate UI with query)
+        catch (err) {
+            log(`❌ FAILED: ${strategy.label} — ${err?.message || err}`);
+        }
+    }
+    // 4. If direct injection worked, we're done
+    if (injected) {
+        vscode.window.setStatusBarMessage(`🚀 Prompt sent directly to AI Chat!`, 3000);
+        log('Injection complete — prompt auto-injected.');
         try {
-            await vscode.commands.executeCommand('workbench.action.chat.open', {
-                query: resolvedContent
-            });
-            return true;
+            fs.writeFileSync(LOG_FILE, logLines.join('\n'), 'utf-8');
         }
-        catch { /* skip */ }
-        return false;
-    };
-    const directInjected = await tryDirectInjections();
-    if (!directInjected) {
-        // Fallback: Clipboard & Focused Paste (Original Method)
-        await vscode.env.clipboard.writeText(resolvedContent);
-        const chatCommands = [
-            'antigravity.agent.open',
-            'antigravity.chat.open',
-            'cursor.chat.open',
-            'workbench.action.chat.open',
-            'inlineChat.start',
-        ];
-        let chatOpened = false;
-        for (const cmd of chatCommands) {
-            try {
-                await vscode.commands.executeCommand(cmd);
-                chatOpened = true;
-                break;
-            }
-            catch {
-                continue;
-            }
+        catch (e) { }
+        return;
+    }
+    // 5. Fallback: Open any chat panel and try clipboard paste
+    log('All direct injections failed. Trying fallback: open chat + paste...');
+    const fallbackCmds = [
+        'antigravity.agent.open',
+        'antigravity.chat.open',
+        'workbench.action.chat.open',
+        'cursor.chat.open',
+        'workbench.action.chat.focus',
+    ].filter(c => allCommands.includes(c));
+    log(`Fallback commands available: ${fallbackCmds.join(', ') || 'NONE'}`);
+    let chatOpened = false;
+    for (const cmd of fallbackCmds) {
+        try {
+            log(`Opening chat via: ${cmd}`);
+            await vscode.commands.executeCommand(cmd);
+            chatOpened = true;
+            log(`Chat opened with: ${cmd}`);
+            break;
         }
-        if (chatOpened) {
-            const pasteSequence = async (ms) => {
-                await new Promise(r => setTimeout(r, ms));
-                try {
-                    await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-                    return true;
-                }
-                catch {
-                    return false;
-                }
-            };
-            await pasteSequence(350);
-            vscode.window.setStatusBarMessage(`⚡ Prompt prepared! (Cmd+V if needed)`, 5000);
+        catch (err) {
+            log(`Failed to open chat with ${cmd}: ${err?.message || err}`);
         }
+    }
+    if (chatOpened) {
+        // Give the chat panel time to render and grab focus
+        await new Promise(r => setTimeout(r, 500));
+        try {
+            await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+            log('Paste command executed.');
+        }
+        catch (err) {
+            log(`Paste failed (expected in chat panels): ${err?.message || err}`);
+        }
+        vscode.window.setStatusBarMessage(`⚡ Prompt copied! Press Cmd+V to paste into chat.`, 5000);
     }
     else {
-        vscode.window.setStatusBarMessage(`🚀 Prompt sent directly to AI!`, 3000);
+        log('No chat commands available at all. Showing info message.');
+        vscode.window.showInformationMessage('⚡ Prompt copied to clipboard! Open AI chat and press Cmd+V to paste.');
     }
+    log('Injection pipeline complete.');
+    try {
+        fs.writeFileSync(LOG_FILE, logLines.join('\n'), 'utf-8');
+    }
+    catch (e) { }
 }
