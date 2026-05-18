@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { StorageService } from './storage';
 import { QuickPromptTreeProvider, PromptTreeItem, CategoryTreeItem } from './treeProvider';
 import { injectPrompt } from './actions';
+import { Prompt } from './models';
 
 export function registerCommands(
   context: vscode.ExtensionContext,
@@ -19,11 +20,50 @@ export function registerCommands(
 
   // ---- Use Prompt (inject to chat) ----
   context.subscriptions.push(
-    vscode.commands.registerCommand('quickPrompt.usePrompt', async (item?: PromptTreeItem) => {
+    vscode.commands.registerCommand('quickPrompt.usePrompt', async (item?: PromptTreeItem | string) => {
       if (!checkEnabled()) return showDisabledWarning();
-      if (item?.prompt) {
-        await storage.incrementUseCount(item.prompt.id);
-        await injectPrompt(item.prompt, storage);
+
+      let prompt: Prompt | undefined;
+
+      if (typeof item === 'string') {
+        prompt = storage.getPrompts().find((p) => p.id === item);
+        if (!prompt) {
+          // Check if it is a standalone skill
+          const skill = storage.getSkills().find((s) => s.id === item);
+          if (skill) {
+            prompt = {
+              id: skill.id,
+              title: skill.name,
+              content: skill.content,
+              category: 'Skills',
+              isFavorite: skill.isFavorite,
+              createdAt: skill.createdAt,
+              updatedAt: skill.updatedAt,
+              tags: []
+            };
+          }
+        }
+      } else if (item && 'prompt' in item) {
+        prompt = item.prompt;
+      } else {
+        // Interactive choice if invoked with no arguments (e.g. via command palette)
+        const prompts = storage.getPrompts();
+        if (prompts.length === 0) {
+          vscode.window.showInformationMessage('No prompts found. Create one first!');
+          return;
+        }
+        const pick = await vscode.window.showQuickPick(
+          prompts.map((p) => ({ label: p.title, description: p.category, id: p.id })),
+          { title: 'Choose a prompt to use' }
+        );
+        if (pick) {
+          prompt = prompts.find((p) => p.id === pick.id);
+        }
+      }
+
+      if (prompt) {
+        await storage.incrementUseCount(prompt.id);
+        await injectPrompt(prompt, storage);
       }
     })
   );
