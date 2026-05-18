@@ -63,21 +63,86 @@ export async function injectPrompt(
   const allCommands = await vscode.commands.getCommands(true);
 
   log(`Total registered commands: ${allCommands.length}`);
+  const interestingCommands = allCommands.filter(c =>
+    c.includes("antigravity") ||
+    c.includes("agent") ||
+    (c.includes("chat") && c.includes("focus"))
+  );
+  log(`Interesting commands: ${JSON.stringify(interestingCommands, null, 2)}`);
 
   // 1. Antigravity-specific Focus & Paste Strategy (No-Send)
   if (
+    allCommands.includes("antigravity.sendPromptToAgentPanel") ||
     allCommands.includes("antigravity.agentSidePanel.focus") ||
     allCommands.includes("antigravity.agentSidePanel.open")
   ) {
-    log("Antigravity detected. Running non-sending focus & paste strategy...");
+    log("Antigravity detected. Running injection strategy...");
+
+    // NATIVE DIRECT INJECTION (Best Strategy):
+    // Uses the IDE's built-in direct prompt injection command, completely bypassing clipboard/focus issues.
+    if (allCommands.includes("antigravity.sendPromptToAgentPanel")) {
+      log("Antigravity sendPromptToAgentPanel detected. Using direct native injection...");
+      try {
+        // Open the Antigravity agent panel first if closed
+        if (allCommands.includes("antigravity.agentSidePanel.open")) {
+          await vscode.commands.executeCommand("antigravity.agentSidePanel.open");
+        } else if (allCommands.includes("antigravity.openAgent")) {
+          await vscode.commands.executeCommand("antigravity.openAgent");
+        }
+
+        // Focus the panel to guarantee it is ready to receive input
+        if (allCommands.includes("antigravity.agentSidePanel.focus")) {
+          await vscode.commands.executeCommand("antigravity.agentSidePanel.focus");
+        }
+
+        // Brief delay to allow the panel to initialize and mount
+        await new Promise((r) => setTimeout(r, 300));
+
+        await vscode.commands.executeCommand(
+          "antigravity.sendPromptToAgentPanel",
+          resolvedContent
+        );
+        log("✅ Successfully injected via Antigravity native command.");
+        vscode.window.setStatusBarMessage("🚀 Prompt pasted in AI Chat!", 3000);
+        try {
+          fs.writeFileSync(LOG_FILE, logLines.join("\n"), "utf-8");
+        } catch (e) {}
+        return;
+      } catch (err: any) {
+        log(`Antigravity native injection failed: ${err?.message || err}. Falling back to focus & paste...`);
+      }
+    }
+
+    // FOCUS & PASTE FALLBACK STRATEGY:
+    // If direct injection fails or is unavailable, use the robust focus and paste sequence.
     try {
       if (allCommands.includes("antigravity.agentSidePanel.open")) {
         await vscode.commands.executeCommand("antigravity.agentSidePanel.open");
       }
       await vscode.commands.executeCommand("antigravity.agentSidePanel.focus");
 
-      // Short delay to allow focus transition to the input box
-      await new Promise((r) => setTimeout(r, 300));
+      // 1st delay to let the panel initialize and render
+      await new Promise((r) => setTimeout(r, 350));
+
+      // Re-trigger focus to ensure the input box is targeted
+      await vscode.commands.executeCommand("antigravity.agentSidePanel.focus");
+
+      // Dynamically trigger focus input commands if registered to activate typing cursor
+      const focusInputCmds = [
+        "antigravity.agentSidePanel.focusInput",
+        "antigravity.chat.focusInput",
+        "workbench.action.chat.focusInput"
+      ].filter(c => allCommands.includes(c));
+
+      for (const cmd of focusInputCmds) {
+        try {
+          await vscode.commands.executeCommand(cmd);
+          log(`Executed dynamic focus input command: ${cmd}`);
+        } catch (e) {}
+      }
+
+      // 2nd short delay for focus to fully settle
+      await new Promise((r) => setTimeout(r, 150));
 
       await vscode.commands.executeCommand(
         "editor.action.clipboardPasteAction",
@@ -140,6 +205,22 @@ export async function injectPrompt(
   if (chatOpened) {
     // Give the chat panel time to render and grab focus
     await new Promise((r) => setTimeout(r, 400));
+
+    // Dynamically trigger focus input commands if registered
+    const focusInputCmds = [
+      "cursor.chat.focusInput",
+      "workbench.action.chat.focusInput"
+    ].filter(c => allCommands.includes(c));
+
+    for (const cmd of focusInputCmds) {
+      try {
+        await vscode.commands.executeCommand(cmd);
+        log(`Executed dynamic fallback focus input command: ${cmd}`);
+      } catch (e) {}
+    }
+
+    await new Promise((r) => setTimeout(r, 150));
+
     try {
       await vscode.commands.executeCommand(
         "editor.action.clipboardPasteAction",

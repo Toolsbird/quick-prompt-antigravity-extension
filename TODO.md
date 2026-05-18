@@ -14,9 +14,9 @@
 - [x] **Skill-to-Prompt Link — Favorite Save Bug**
   - Already patched in v1.2.2 and verified: saving a skill as favorite while linked to a prompt preserves the `linkedSkill` field.
 
-- [ ] **Prompt Auto-Inject Fails (Clipboard Fallback Triggers)**
+- [x] **Prompt Auto-Inject Fails (Clipboard Fallback Triggers)**
   - Auto-injecting a prompt directly into the Antigravity/Cursor chat input box is failing. It falls back to copying to the clipboard and requires manual paste (Cmd+V).
-  - Diagnostic file logging (`~/quick-prompt-inject-debug.log`) added in v1.2.7. Next session: analyze the logs to find the correct `vscode.commands.executeCommand` arguments to pre-fill the chat input natively.
+  - Diagnostic file logging (`~/quick-prompt-inject-debug.log`) added in v1.2.7. Resolved by ensuring the side panel is opened and focused prior to running the direct native injection command.
 
 ---
 
@@ -94,4 +94,4 @@
 
 ---
 
-> **Resume Point:** Check `~/quick-prompt-inject-debug.log` to diagnose why direct `executeCommand` injections are failing in the Antigravity chat, and fix the auto-populate logic.
+> **Resume Point:** Prompt Auto-Inject bug resolved and packaged in v1.2.7 VSIX. Next: implement Publisher License Gate — Multi-Seat Check.
