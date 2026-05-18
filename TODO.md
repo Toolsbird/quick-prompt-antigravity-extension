@@ -1,5 +1,25 @@
 # Quick Prompt Antigravity Extension — TODO List
-> Last updated: 2026-03-29 | Current version: **v1.2.5** | Branch: `main`
+> Last updated: 2026-05-18 | Current version: **v1.2.9** | Branch: `main`
+
+---
+
+## ✅ WORKING — Prompt Injection (Both Modes)
+
+> **Auto Mode + Non-Auto (Draft) Mode are BOTH WORKING as of v1.2.9**
+
+- [x] **Auto-Submit Mode** (`quickPrompt.autoSubmit = true`)
+  - Opens Antigravity side panel → focuses it → sends prompt directly via `antigravity.sendPromptToAgentPanel`
+  - Instant submission — no manual paste needed
+
+- [x] **Draft/Pre-fill Mode** (`quickPrompt.autoSubmit = false`, default)
+  - Opens Antigravity side panel → focuses it → toggles chat focus → pastes content as a draft
+  - User presses Enter to send when ready
+
+- [x] **VS Code Native Chat Fallback**
+  - Uses `workbench.action.chat.open` with `isPartialQuery: true` to populate without sending
+
+- [x] **Universal Fallback** (Cursor, Copilot, etc.)
+  - Copies to clipboard and opens the relevant chat panel for manual paste
 
 ---
 
@@ -17,6 +37,7 @@
 - [x] **Prompt Auto-Inject Fails (Clipboard Fallback Triggers)**
   - Auto-injecting a prompt directly into the Antigravity/Cursor chat input box is failing. It falls back to copying to the clipboard and requires manual paste (Cmd+V).
   - Diagnostic file logging (`~/quick-prompt-inject-debug.log`) added in v1.2.7. Resolved by ensuring the side panel is opened and focused prior to running the direct native injection command.
+  - **FULLY RESOLVED in v1.2.9** — Both auto-submit and draft pre-fill modes working natively.
 
 ---
 
@@ -37,7 +58,7 @@
 
 ---
 
-## 🟢 Polish & UX Improvements
+## 🟢 Polish & UX Improvements (Pending)
 
 - [ ] **Webview Light Mode**
   - Light mode was partially implemented — verify that all components (cards, modals, skill panel) respect the user's VS Code theme token
@@ -56,6 +77,12 @@
 
 - [ ] **Keyboard Shortcut Customization**
   - Let users configure which keybinding triggers the Quick Prompt picker from VS Code settings
+
+- [ ] **Status Bar Favorites — Quick-Click Injection**
+  - Verify that clicking a favorite in the status bar triggers the correct injection mode (auto vs. draft) based on the `autoSubmit` setting
+
+- [ ] **Dashboard Auto-Submit Toggle — Visual Polish**
+  - Add a more prominent visual indicator (e.g., colored badge/glow) for the auto-submit toggle state in the webview dashboard
 
 ---
 
@@ -76,10 +103,23 @@
 - [ ] **VS Code Marketplace Publishing**
   - Finalize publisher account setup, update `package.json` publisher field, and submit v1.3.0 to the VS Code Marketplace
 
+- [ ] **Prompt Versioning / History**
+  - Track edits to prompts over time so users can revert to previous versions
+
+- [ ] **Prompt Chaining**
+  - Allow users to define multi-step prompt sequences that execute in order
+
 ---
 
 ## ✅ Completed (Recent Sessions)
 
+- [x] v1.2.9 — Bump version and package new release VSIX
+- [x] v1.2.9 — Unified native prompt injection with boolean flag for draft and auto-submit
+- [x] v1.2.8 — Add Auto-Submit toggle to dashboard and support selective auto-submit/draft-prefill strategies
+- [x] v1.2.8 — Pre-fill the chat input as a draft instead of sending immediately
+- [x] v1.2.7 — Ensure Antigravity side panel is open and focused before native prompt injection
+- [x] v1.2.7 — Replace automatic prompt injection with robust focus-and-paste pipeline
+- [x] v1.2.7 — Unlimited favorites, export/import prompts, improved delete flow and UI tweaks
 - [x] v1.2.4 — Cleaned up old `.vsix` files, keep only latest
 - [x] v1.2.4 — White pill "Sync" button in header with dark text for proper contrast
 - [x] v1.2.3 — Removed sidebar Login-to-Sync button (consolidated to header)
@@ -94,4 +134,4 @@
 
 ---
 
-> **Resume Point:** Prompt Auto-Inject bug resolved and packaged in v1.2.7 VSIX. Next: implement Publisher License Gate — Multi-Seat Check.
+> **Resume Point (2026-05-18):** Prompt injection is **FULLY WORKING** in both **Auto-Submit mode** and **Draft/Pre-fill mode** as of v1.2.9. The `quickPrompt.autoSubmit` setting controls the behavior. Next session: pick up from the **🟢 Polish & UX** section — start with **Search/Filter**, **Light Mode verification**, or **Publisher License Gate**.
