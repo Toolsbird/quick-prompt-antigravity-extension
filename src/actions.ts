@@ -80,52 +80,27 @@ export async function injectPrompt(
 
     // NATIVE DIRECT INJECTION (Best Strategy):
     // Uses the IDE's built-in direct prompt injection command, completely bypassing clipboard/focus issues.
-    if (allCommands.includes("antigravity.sendPromptToAgentPanel")) {
-      log("Antigravity sendPromptToAgentPanel detected. Using direct native injection...");
-      try {
-        // Open the Antigravity agent panel first if closed
-        if (allCommands.includes("antigravity.agentSidePanel.open")) {
-          await vscode.commands.executeCommand("antigravity.agentSidePanel.open");
-        } else if (allCommands.includes("antigravity.openAgent")) {
-          await vscode.commands.executeCommand("antigravity.openAgent");
-        }
-
-        // Focus the panel to guarantee it is ready to receive input
-        if (allCommands.includes("antigravity.agentSidePanel.focus")) {
-          await vscode.commands.executeCommand("antigravity.agentSidePanel.focus");
-        }
-
-        // Brief delay to allow the panel to initialize and mount
-        await new Promise((r) => setTimeout(r, 300));
-
-        await vscode.commands.executeCommand(
-          "antigravity.sendPromptToAgentPanel",
-          resolvedContent
-        );
-        log("✅ Successfully injected via Antigravity native command.");
-        vscode.window.setStatusBarMessage("🚀 Prompt pasted in AI Chat!", 3000);
-        try {
-          fs.writeFileSync(LOG_FILE, logLines.join("\n"), "utf-8");
-        } catch (e) {}
-        return;
-      } catch (err: any) {
-        log(`Antigravity native injection failed: ${err?.message || err}. Falling back to focus & paste...`);
-      }
-    }
-
-    // FOCUS & PASTE FALLBACK STRATEGY:
-    // If direct injection fails or is unavailable, use the robust focus and paste sequence.
+    // FOCUS & PASTE STRATEGY:
+    // This is the preferred non-sending populate strategy for Antigravity/Cursor.
+    // It opens the panel, focuses the input field, and executes clipboard paste to pre-fill the input box natively.
     try {
       if (allCommands.includes("antigravity.agentSidePanel.open")) {
         await vscode.commands.executeCommand("antigravity.agentSidePanel.open");
+      } else if (allCommands.includes("antigravity.openAgent")) {
+        await vscode.commands.executeCommand("antigravity.openAgent");
       }
-      await vscode.commands.executeCommand("antigravity.agentSidePanel.focus");
+      
+      if (allCommands.includes("antigravity.agentSidePanel.focus")) {
+        await vscode.commands.executeCommand("antigravity.agentSidePanel.focus");
+      }
 
       // 1st delay to let the panel initialize and render
       await new Promise((r) => setTimeout(r, 350));
 
       // Re-trigger focus to ensure the input box is targeted
-      await vscode.commands.executeCommand("antigravity.agentSidePanel.focus");
+      if (allCommands.includes("antigravity.agentSidePanel.focus")) {
+        await vscode.commands.executeCommand("antigravity.agentSidePanel.focus");
+      }
 
       // Dynamically trigger focus input commands if registered to activate typing cursor
       const focusInputCmds = [
