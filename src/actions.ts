@@ -79,61 +79,72 @@ export async function injectPrompt(
     log("Antigravity detected. Running native injection strategy...");
     const autoSubmit = vscode.workspace.getConfiguration("quickPrompt").get<boolean>("autoSubmit", false);
 
+    // DIRECT NATIVE SUBMISSION (If autoSubmit is enabled):
+    if (autoSubmit && allCommands.includes("antigravity.sendPromptToAgentPanel")) {
+      log("Auto-Submit is enabled. Using direct native injection...");
+      try {
+        if (allCommands.includes("antigravity.agentSidePanel.open")) {
+          await vscode.commands.executeCommand("antigravity.agentSidePanel.open");
+        } else if (allCommands.includes("antigravity.openAgent")) {
+          await vscode.commands.executeCommand("antigravity.openAgent");
+        }
+        if (allCommands.includes("antigravity.agentSidePanel.focus")) {
+          await vscode.commands.executeCommand("antigravity.agentSidePanel.focus");
+        }
+        await new Promise((r) => setTimeout(r, 300));
+
+        await vscode.commands.executeCommand(
+          "antigravity.sendPromptToAgentPanel",
+          resolvedContent
+        );
+        log("✅ Successfully auto-submitted via Antigravity native command.");
+        vscode.window.setStatusBarMessage("🚀 Prompt sent to AI Chat!", 3000);
+        try {
+          fs.writeFileSync(LOG_FILE, logLines.join("\n"), "utf-8");
+        } catch (e) {}
+        return;
+      } catch (err: any) {
+        log(`Antigravity auto-submit native injection failed: ${err?.message || err}. Falling back to pre-fill...`);
+      }
+    }
+
+    // FOCUS & PASTE STRATEGY (Draft/Pre-fill Mode - If autoSubmit is disabled):
+    log("Draft/Pre-fill Mode is enabled. Focusing and pasting prompt...");
     try {
-      // Step 1: Open the agent side panel if closed
+      // Step 1: Open the panel
       if (allCommands.includes("antigravity.agentSidePanel.open")) {
         await vscode.commands.executeCommand("antigravity.agentSidePanel.open");
       } else if (allCommands.includes("antigravity.openAgent")) {
         await vscode.commands.executeCommand("antigravity.openAgent");
       }
       
-      // Step 2: Grab focus of the panel
+      // Step 2: Focus the panel
       if (allCommands.includes("antigravity.agentSidePanel.focus")) {
         await vscode.commands.executeCommand("antigravity.agentSidePanel.focus");
       }
 
       // Wait a short delay to let panel render/mount
-      await new Promise((r) => setTimeout(r, 200));
-
-      // Step 3: Run the native direct/draft injection command using the boolean flag
-      if (allCommands.includes("antigravity.sendPromptToAgentPanel")) {
-        await vscode.commands.executeCommand(
-          "antigravity.sendPromptToAgentPanel",
-          resolvedContent,
-          autoSubmit // true = auto-send, false = pre-fill as a draft!
-        );
-        log(`✅ Successfully injected via Antigravity native command (autoSubmit: ${autoSubmit}).`);
-        if (autoSubmit) {
-          vscode.window.setStatusBarMessage("🚀 Prompt sent to AI Chat!", 3000);
-        } else {
-          vscode.window.setStatusBarMessage("🚀 Prompt pre-filled! Press Enter to send.", 4000);
-        }
-        try {
-          fs.writeFileSync(LOG_FILE, logLines.join("\n"), "utf-8");
-        } catch (e) {}
-        return;
-      }
-    } catch (err: any) {
-      log(`Antigravity native injection command failed: ${err?.message || err}. Falling back to focus-and-paste...`);
-    }
-
-    // FALLBACK FOCUS & PASTE STRATEGY (If native command is unavailable or failed):
-    try {
-      if (allCommands.includes("antigravity.agentSidePanel.open")) {
-        await vscode.commands.executeCommand("antigravity.agentSidePanel.open");
-      }
-      if (allCommands.includes("antigravity.agentSidePanel.focus")) {
-        await vscode.commands.executeCommand("antigravity.agentSidePanel.focus");
-      }
       await new Promise((r) => setTimeout(r, 350));
+
+      // Step 3: Focus the chat input box natively using toggleChatFocus
+      if (allCommands.includes("antigravity.toggleChatFocus")) {
+        await vscode.commands.executeCommand("antigravity.toggleChatFocus");
+        log("Executed antigravity.toggleChatFocus to target the chat input box.");
+      }
+
+      // Wait a short delay for input box focus to settle
+      await new Promise((r) => setTimeout(r, 150));
+
+      // Step 4: Execute native paste command into the focused text input box
       await vscode.commands.executeCommand("editor.action.clipboardPasteAction");
-      log("✅ Successfully executed fallback paste into Antigravity chat input.");
+      log("✅ Successfully pasted draft into Antigravity chat input.");
+      vscode.window.setStatusBarMessage("🚀 Prompt pre-filled! Press Enter to send.", 4000);
       try {
         fs.writeFileSync(LOG_FILE, logLines.join("\n"), "utf-8");
       } catch (e) {}
       return;
     } catch (err: any) {
-      log(`Antigravity fallback strategy failed: ${err?.message || err}`);
+      log(`Antigravity draft focus/paste strategy failed: ${err?.message || err}`);
     }
   }
 
