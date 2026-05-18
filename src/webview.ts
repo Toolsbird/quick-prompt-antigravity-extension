@@ -207,10 +207,11 @@ export class WebviewManager {
       case 'login': {
         const success = await this._storage.login();
         if (success) {
-          this._panel?.webview.postMessage({ type: 'success', msg: 'Successfully connected!' });
-          this._syncWebview();
+          // Sync first so isLoggedIn is already true when the success toast renders
+          await this._syncWebview();
+          this._panel?.webview.postMessage({ type: 'loginSuccess', msg: '✅ Connected to GitHub! Click Sync Now to backup your prompts.' });
         } else {
-          this._panel?.webview.postMessage({ type: 'error', msg: 'Login failed. Please check your internet connection.' });
+          this._panel?.webview.postMessage({ type: 'error', msg: 'Login failed or was cancelled. Please try again.' });
         }
         break;
       }

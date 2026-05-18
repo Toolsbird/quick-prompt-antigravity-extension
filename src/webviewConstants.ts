@@ -777,6 +777,12 @@ export const WEBVIEW_JS = `
       isLoggedIn = msg.isLoggedIn || false;
       updateToggleUI();
       render();
+    } else if (msg.type === 'loginSuccess') {
+      // Login succeeded — sync data already arrived before this message,
+      // so isLoggedIn is already true in state. Update button immediately.
+      isLoggedIn = true;
+      updateSyncUI();
+      showToast(msg.msg, 'success');
     } else if (msg.type === 'success') {
       closeModal();
       closeSkillModal();

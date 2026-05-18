@@ -482,11 +482,18 @@ export class StorageService {
 
   /**
    * Checks if the user is already signed into GitHub without prompting.
+   * Uses silent:true first; if that returns nothing, tries createIfNone:false
+   * as a fallback (never prompts but checks existing consent more reliably).
    */
   async checkLoggedIn(): Promise<boolean> {
     try {
+      // Primary: fully silent check
       const session = await vscode.authentication.getSession('github', this._GITHUB_SCOPES, { silent: true });
-      return !!session;
+      if (session) return true;
+
+      // Fallback: non-prompting check — returns existing session without UI
+      const fallback = await vscode.authentication.getSession('github', this._GITHUB_SCOPES, { createIfNone: false });
+      return !!fallback;
     } catch {
       return false;
     }
