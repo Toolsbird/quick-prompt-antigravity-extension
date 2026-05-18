@@ -23,6 +23,23 @@
 
 ---
 
+## ✅ WORKING — GitHub Login & Sync Button
+
+> **Login flow fixed as of commit `52e9517`**
+
+- [x] **Login button flicker eliminated**
+  - Button now switches to "Sync Now" instantly after login with zero delay
+  - New `loginSuccess` message type separates login response from generic success flow
+
+- [x] **Silent session false-negative fixed**
+  - `checkLoggedIn()` now falls back to `createIfNone: false` if `silent: true` returns undefined
+  - Prevents button wrongly showing "Login to Sync" when user is already authenticated
+
+- [x] **Login race condition fixed**
+  - `_syncWebview()` is now awaited before the success message fires, so `isLoggedIn` is already `true` in the webview state when the button re-renders
+
+---
+
 ## 🔴 Critical / Must Fix
 
 - [x] **Sync Feature Consolidation**
@@ -58,16 +75,17 @@
 
 ---
 
-## 🟢 Polish & UX Improvements (Pending)
+## 🟢 Polish & UX Improvements (Pending — Pick up next session)
+
+- [ ] **Search / Filter in Prompt List**
+  - Add a live search bar at the top of the prompt list in both the sidebar and webview dashboard
+  - ⭐ **START HERE NEXT SESSION**
 
 - [ ] **Webview Light Mode**
   - Light mode was partially implemented — verify that all components (cards, modals, skill panel) respect the user's VS Code theme token
 
 - [ ] **Prompt Injection — Context-Aware Targeting**
   - Currently injects into the active editor's input. Should detect if the user is in Antigravity chat vs. a regular editor
-
-- [ ] **Search / Filter in Prompt List**
-  - Add a live search bar at the top of the prompt list in both the sidebar and webview dashboard
 
 - [ ] **Drag-and-Drop Reordering**
   - Allow users to reorder prompts within a category via drag-and-drop in the webview
@@ -113,6 +131,11 @@
 
 ## ✅ Completed (Recent Sessions)
 
+- [x] `52e9517` — fix(login): eliminate button flicker + silent-session false-negative on login
+  - `webview.ts`: await `_syncWebview()` before `loginSuccess` message; new `loginSuccess` message type
+  - `storage.ts`: `checkLoggedIn()` fallback to `createIfNone: false` to prevent false logged-out state
+  - `webviewConstants.ts`: `loginSuccess` handler immediately sets `isLoggedIn=true` and calls `updateSyncUI()`
+- [x] `eaf8849` — Updated TODO with full session state and resume point
 - [x] v1.2.9 — Bump version and package new release VSIX
 - [x] v1.2.9 — Unified native prompt injection with boolean flag for draft and auto-submit
 - [x] v1.2.8 — Add Auto-Submit toggle to dashboard and support selective auto-submit/draft-prefill strategies
@@ -134,4 +157,8 @@
 
 ---
 
-> **Resume Point (2026-05-18):** Prompt injection is **FULLY WORKING** in both **Auto-Submit mode** and **Draft/Pre-fill mode** as of v1.2.9. The `quickPrompt.autoSubmit` setting controls the behavior. Next session: pick up from the **🟢 Polish & UX** section — start with **Search/Filter**, **Light Mode verification**, or **Publisher License Gate**.
+> **Resume Point (2026-05-18, Session 2):**
+> - Prompt injection ✅ WORKING (auto + draft)
+> - GitHub login ✅ FIXED (no flicker, no false-logout)
+> - **Next session → Start with: Search/Filter in Prompt List** (see 🟢 section)
+> - Then: Light Mode verification → Publisher License Gate → Status Bar injection mode check
