@@ -195,6 +195,11 @@
           "type": "boolean",
           "default": true,
           "description": "Enable or disable the Quick Prompt extension features (Status Bar, Sidebar, etc.)"
+        },
+        "quickPrompt.autoSubmit": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically send/submit the prompt to the LLM agent panel when clicked instead of pre-filling as a draft."
         }
       }
     }

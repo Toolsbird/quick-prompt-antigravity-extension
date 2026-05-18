@@ -55,7 +55,8 @@ export class WebviewManager {
       skills: this._storage.getSkills(),
       isPro: this._storage.isPro(),
       isLoggedIn: isLoggedIn,
-      isEnabled: vscode.workspace.getConfiguration('quickPrompt').get<boolean>('enabled', true)
+      isEnabled: vscode.workspace.getConfiguration('quickPrompt').get<boolean>('enabled', true),
+      isAutoSubmit: vscode.workspace.getConfiguration('quickPrompt').get<boolean>('autoSubmit', false)
     });
   }
 
@@ -161,6 +162,12 @@ export class WebviewManager {
       case 'toggleExtensionState': {
         const { enabled } = message;
         await vscode.workspace.getConfiguration('quickPrompt').update('enabled', enabled, vscode.ConfigurationTarget.Global);
+        break;
+      }
+
+      case 'toggleAutoSubmitState': {
+        const { autoSubmit } = message;
+        await vscode.workspace.getConfiguration('quickPrompt').update('autoSubmit', autoSubmit, vscode.ConfigurationTarget.Global);
         break;
       }
 

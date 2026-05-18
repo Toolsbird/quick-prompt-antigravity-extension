@@ -536,12 +536,21 @@ export const WEBVIEW_HTML = `
       <div class="header-sub">Antigravity / VS Code Extension</div>
     </div>
     <div class="header-actions">
-      <!-- Master Toggle Switch -->
-      <label class="master-toggle" title="Enable/Disable Sidebar & Status Bar Quick Prompts">
-        <input type="checkbox" id="masterToggleSwitch" onchange="toggleExtensionState(this.checked)" />
-        <span class="toggle-slider"></span>
-        <span class="toggle-label" id="masterToggleLabel">Active</span>
-      </label>
+      <!-- Toggle Group -->
+      <div class="toggle-group" style="display: flex; flex-direction: column; gap: 6px; align-items: stretch;">
+        <!-- Master Toggle Switch -->
+        <label class="master-toggle" title="Enable/Disable Sidebar & Status Bar Quick Prompts" style="padding: 5px 12px 5px 5px; height: 30px;">
+          <input type="checkbox" id="masterToggleSwitch" onchange="toggleExtensionState(this.checked)" />
+          <span class="toggle-slider"></span>
+          <span class="toggle-label" id="masterToggleLabel" style="font-size: 10px; font-weight: 700;">Active</span>
+        </label>
+        <!-- Auto-Submit Toggle Switch -->
+        <label class="master-toggle" title="Auto-submit prompt directly to AI Chat when clicked" style="padding: 5px 12px 5px 5px; height: 30px;">
+          <input type="checkbox" id="autoSubmitToggleSwitch" onchange="toggleAutoSubmitState(this.checked)" />
+          <span class="toggle-slider"></span>
+          <span class="toggle-label" id="autoSubmitToggleLabel" style="font-size: 10px; font-weight: 700;">Draft Mode</span>
+        </label>
+      </div>
       <!-- Login to Sync Button (header only) -->
       <button id="headerSyncBtn" class="btn btn-sync" onclick="triggerSync()" title="Login to sync your prompts to private cloud storage">
         <span id="headerSyncIcon">🔐</span> <span id="headerSyncText">Login to Sync</span>
@@ -743,6 +752,7 @@ export const WEBVIEW_JS = `
   let allSkills = [];
   let isPro = false;
   let isExtensionEnabled = true;
+  let isAutoSubmitEnabled = false;
   let isLoggedIn = false;
   let currentNav = 'all';
   let editingId = null;
@@ -763,6 +773,7 @@ export const WEBVIEW_JS = `
       allSkills = msg.skills || [];
       isPro = msg.isPro || false;
       isExtensionEnabled = msg.isEnabled !== false;
+      isAutoSubmitEnabled = msg.isAutoSubmit === true;
       isLoggedIn = msg.isLoggedIn || false;
       updateToggleUI();
       render();
@@ -982,6 +993,11 @@ export const WEBVIEW_JS = `
     const label = document.getElementById('masterToggleLabel');
     if(toggle) toggle.checked = isExtensionEnabled;
     if(label) label.textContent = isExtensionEnabled ? 'Active' : 'Paused';
+
+    const autoToggle = document.getElementById('autoSubmitToggleSwitch');
+    const autoLabel = document.getElementById('autoSubmitToggleLabel');
+    if(autoToggle) autoToggle.checked = isAutoSubmitEnabled;
+    if(autoLabel) autoLabel.textContent = isAutoSubmitEnabled ? 'Auto-Send' : 'Draft Mode';
   }
 
   function toggleExtensionState(checked) {
@@ -992,6 +1008,17 @@ export const WEBVIEW_JS = `
       showToast('Extension integrations paused.', 'info');
     } else {
       showToast('Extension integrations activated.', 'success');
+    }
+  }
+
+  function toggleAutoSubmitState(checked) {
+    isAutoSubmitEnabled = checked;
+    updateToggleUI();
+    vscode.postMessage({ type: 'toggleAutoSubmitState', autoSubmit: checked });
+    if (checked) {
+      showToast('Auto-submit to LLM enabled.', 'success');
+    } else {
+      showToast('Draft mode (pre-fill only) enabled.', 'info');
     }
   }
 

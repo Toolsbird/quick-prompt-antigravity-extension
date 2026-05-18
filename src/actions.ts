@@ -77,10 +77,38 @@ export async function injectPrompt(
     allCommands.includes("antigravity.agentSidePanel.open")
   ) {
     log("Antigravity detected. Running injection strategy...");
+    const autoSubmit = vscode.workspace.getConfiguration("quickPrompt").get<boolean>("autoSubmit", false);
 
-    // NATIVE DIRECT INJECTION (Best Strategy):
-    // Uses the IDE's built-in direct prompt injection command, completely bypassing clipboard/focus issues.
-    // FOCUS & PASTE STRATEGY:
+    // DIRECT NATIVE SUBMISSION (If autoSubmit is enabled):
+    if (autoSubmit && allCommands.includes("antigravity.sendPromptToAgentPanel")) {
+      log("Auto-Submit is enabled. Using direct native injection...");
+      try {
+        if (allCommands.includes("antigravity.agentSidePanel.open")) {
+          await vscode.commands.executeCommand("antigravity.agentSidePanel.open");
+        } else if (allCommands.includes("antigravity.openAgent")) {
+          await vscode.commands.executeCommand("antigravity.openAgent");
+        }
+        if (allCommands.includes("antigravity.agentSidePanel.focus")) {
+          await vscode.commands.executeCommand("antigravity.agentSidePanel.focus");
+        }
+        await new Promise((r) => setTimeout(r, 300));
+
+        await vscode.commands.executeCommand(
+          "antigravity.sendPromptToAgentPanel",
+          resolvedContent
+        );
+        log("✅ Successfully auto-submitted via Antigravity native command.");
+        vscode.window.setStatusBarMessage("🚀 Prompt sent to AI Chat!", 3000);
+        try {
+          fs.writeFileSync(LOG_FILE, logLines.join("\n"), "utf-8");
+        } catch (e) {}
+        return;
+      } catch (err: any) {
+        log(`Antigravity auto-submit native injection failed: ${err?.message || err}. Falling back to pre-fill...`);
+      }
+    }
+
+    // FOCUS & PASTE STRATEGY (Draft/Pre-fill Mode):
     // This is the preferred non-sending populate strategy for Antigravity/Cursor.
     // It opens the panel, focuses the input field, and executes clipboard paste to pre-fill the input box natively.
     try {
@@ -123,7 +151,7 @@ export async function injectPrompt(
         "editor.action.clipboardPasteAction",
       );
       log("✅ Successfully pasted into Antigravity chat input.");
-      vscode.window.setStatusBarMessage("🚀 Prompt pasted in AI Chat!", 3000);
+      vscode.window.setStatusBarMessage("🚀 Prompt pre-filled! Press Enter to send.", 4000);
       try {
         fs.writeFileSync(LOG_FILE, logLines.join("\n"), "utf-8");
       } catch (e) {}
